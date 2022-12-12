@@ -1,0 +1,10 @@
+{
+    "name": "pong",
+    "version-string": "1.0.0",
+    "homepage": "https://github.com/david-ivain/OPonGL",
+    "description": "Pong clone made in C++ with glfw and OpenGL.",
+    "dependencies": [
+        "glfw3",
+        "glm"
+    ]
+}
