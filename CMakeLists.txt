@@ -12,12 +12,13 @@ endif ()
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(glad CONFIG REQUIRED)
 
 add_executable(app
 src/main.cpp
 src/ngn/utils/log.h
 )
 
-target_link_libraries(app glfw glm::glm ${OPENGL_LIBRARIES})
+target_link_libraries(app PRIVATE glfw glm::glm glad::glad ${OPENGL_LIBRARIES})
 
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
