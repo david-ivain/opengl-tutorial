@@ -5,6 +5,7 @@
     "description": "Pong clone made in C++ with glfw and OpenGL.",
     "dependencies": [
         "glfw3",
-        "glm"
+        "glm",
+        "glad"
     ]
 }
