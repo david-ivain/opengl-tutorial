@@ -1,0 +1,11 @@
+{
+    "editor.formatOnSave": true,
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/dependencies/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    },
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "cmake.debugConfig": {
+        "cwd": "${workspaceFolder}"
+    },
+}
