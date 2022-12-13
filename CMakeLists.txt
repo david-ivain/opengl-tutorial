@@ -17,6 +17,8 @@ find_package(glad CONFIG REQUIRED)
 add_executable(app
 src/main.cpp
 src/ngn/utils/log.h
+src/ngn/rendering/shader.h
+src/ngn/rendering/shader.cpp
 )
 
 target_link_libraries(app PRIVATE glfw glm::glm glad::glad ${OPENGL_LIBRARIES})
