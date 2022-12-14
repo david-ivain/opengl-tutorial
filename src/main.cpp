@@ -1,3 +1,6 @@
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include "ngn/rendering/shader.h"
 #include "ngn/utils/log.h"
 
@@ -19,6 +22,7 @@ constexpr float COLOR_ALPHA = 1;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
+unsigned load_texture(const char* path);
 
 int main(int argc, char** argv)
 {
@@ -59,10 +63,10 @@ int main(int argc, char** argv)
 
     // Triangle init
     std::vector<float> vertices {
-        -.5, .5, 0, 1, 0, 0, // top left
-        -.5, -.5, 0, 0, 1, 0, // bottom left
-        .5, -.5, 0, 0, 0, 1, // bottom right
-        .5, .5, 0, 1, 1, 0, // top right
+        -.5, .5, 0, 1, 0, 0, 0, 1, // top left
+        -.5, -.5, 0, 0, 1, 0, 0, 0, // bottom left
+        .5, -.5, 0, 0, 0, 1, 1, 0, // bottom right
+        .5, .5, 0, 1, 1, 0, 1, 1, // top right
     };
 
     std::vector<unsigned> indices {
@@ -84,16 +88,27 @@ int main(int argc, char** argv)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * indices.size(), indices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), NULL);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), NULL);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     // Safe: the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
     ngn::Shader shader("assets/shaders/tutorial.vert", "assets/shaders/tutorial.frag");
+
+    unsigned texture1 = load_texture("assets/images/container.jpg");
+    unsigned texture2 = load_texture("assets/images/awesomeface.png");
+    if (!texture1 || !texture2)
+        return -1;
+
+    shader.use();
+    shader.set("texture1", 0);
+    shader.set("texture2", 1);
 
 // Optional
 #ifdef WIREFRAME_MODE
@@ -114,6 +129,10 @@ int main(int argc, char** argv)
         shader.use();
         shader.set("ourColor", glm::vec4(COLOR_RED, greenValue, COLOR_BLUE, COLOR_ALPHA));
 
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture1);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texture2);
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
@@ -143,4 +162,44 @@ void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+}
+
+unsigned load_texture(const char* path)
+{
+    // Texture loading
+    stbi_set_flip_vertically_on_load(true);
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
+    if (!data) {
+        LOGERR("Failed to load image.");
+        return 0;
+    }
+
+    // Generate Texture
+    unsigned texture;
+    glGenTextures(1, &texture);
+
+    // Bind Texture
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // Texture repeat
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // For GL_CLAMP_TO_BORDER
+    // float borderColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+    // glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+    // Texture filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Load Texture
+    unsigned color_mode = nrChannels == 4 ? GL_RGBA : GL_RGB;
+    glTexImage2D(GL_TEXTURE_2D, 0, color_mode, width, height, 0, color_mode, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Free Image data
+    stbi_image_free(data);
+
+    return texture;
 }

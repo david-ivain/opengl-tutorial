@@ -8,6 +8,10 @@ public:
     Shader(const std::string& vertex_path, const std::string& fragment_path);
     ~Shader();
 
+    Shader(Shader&&) = delete;
+    Shader(const Shader&) = delete;
+    Shader& operator=(const Shader&) = delete;
+
     void use() const;
     template <class T>
     void set(const std::string& name, T value) const;
