@@ -1,3 +1,4 @@
+#include <glm/ext/matrix_transform.hpp>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -126,8 +127,13 @@ int main(int argc, char** argv)
         float timeValue = glfwGetTime();
         float greenValue = sin(timeValue) / 2.0f + 0.5f;
 
+        glm::mat4 transform(0.1);
+        transform = glm::translate(transform, { sin(glfwGetTime()), 0, 0 });
+        transform = glm::rotate(transform, (float)glfwGetTime(), { 0, 0, 1 });
+
         shader.use();
         shader.set("ourColor", glm::vec4(COLOR_RED, greenValue, COLOR_BLUE, COLOR_ALPHA));
+        shader.set("transform", transform);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);

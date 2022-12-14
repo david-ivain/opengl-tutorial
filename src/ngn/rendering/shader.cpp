@@ -90,6 +90,13 @@ void Shader::use() const
 }
 
 template <>
+void Shader::set(const std::string& name, int value) const
+{
+    int uniform_location = glGetUniformLocation(ID_, name.c_str());
+    glUniform1i(uniform_location, value);
+}
+
+template <>
 void Shader::set(const std::string& name, glm::vec4 value) const
 {
     int uniform_location = glGetUniformLocation(ID_, name.c_str());
@@ -97,10 +104,9 @@ void Shader::set(const std::string& name, glm::vec4 value) const
 }
 
 template <>
-void Shader::set(const std::string& name, int value) const
+void Shader::set(const std::string& name, glm::mat4 value) const
 {
     int uniform_location = glGetUniformLocation(ID_, name.c_str());
-    LOGF("%s uniform_location = %d", name.c_str(), uniform_location);
-    glUniform1i(uniform_location, value);
+    glUniformMatrix4fv(uniform_location, 1, GL_FALSE, glm::value_ptr(value));
 }
 }
