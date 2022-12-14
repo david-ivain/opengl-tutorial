@@ -9,6 +9,7 @@ if (APPLE)
 add_compile_definitions(GL_SILENCE_DEPRECATION)
 endif ()
 
+find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
@@ -21,6 +22,7 @@ src/ngn/rendering/shader.h
 src/ngn/rendering/shader.cpp
 )
 
+target_include_directories(app PRIVATE ${STB_INCLUDE_DIRS})
 target_link_libraries(app PRIVATE glfw glm::glm glad::glad ${OPENGL_LIBRARIES})
 
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
