@@ -13,6 +13,9 @@ public:
     Shader& operator=(const Shader&) = delete;
 
     void use() const;
+    /**
+     * @brief Sets the value of a given uniform for this shader.
+     */
     template <class T>
     void set(const std::string& name, T value) const;
 

@@ -23,6 +23,4 @@
 #else
 #define LOG(args...)
 #define LOGF(args...)
-#define LOGERR(args...)
-#define LOGERRF(args...)
 #endif

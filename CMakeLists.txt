@@ -20,6 +20,8 @@ src/main.cpp
 src/ngn/utils/log.h
 src/ngn/rendering/shader.h
 src/ngn/rendering/shader.cpp
+src/ngn/rendering/camera.h
+src/ngn/rendering/camera.cpp
 )
 
 target_include_directories(app PRIVATE ${STB_INCLUDE_DIRS})
