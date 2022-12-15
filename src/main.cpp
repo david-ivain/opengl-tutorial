@@ -1,9 +1,11 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include "ngn/rendering/camera.h"
 #include "ngn/rendering/shader.h"
 #include "ngn/utils/log.h"
 
@@ -22,9 +24,23 @@ constexpr float COLOR_RED = 1;
 constexpr float COLOR_GREEN = .5;
 constexpr float COLOR_BLUE = .3125;
 constexpr float COLOR_ALPHA = 1;
+constexpr float MOVEMENT_SPEED = 4;
+constexpr float MOUSE_SENSITIVITY = .1;
+
+glm::vec3 player_position(0, 0, -50);
+ngn::Camera camera({ .position = player_position });
+
+float delta_time = 0;
+float last_frame = 0;
+
+float last_x = WINDOW_WIDTH / 2.;
+float last_y = WINDOW_HEIGHT / 2.;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow* window);
+void process_input(GLFWwindow* window);
+void mouse_callback(GLFWwindow* window, double position_x, double position_y);
+void scroll_callback(GLFWwindow* window, double offset_x, double offset_y);
+void click_callback(GLFWwindow* window, int input, int action, int mods);
 unsigned load_texture(const char* path);
 
 int main(int argc, char** argv)
@@ -63,6 +79,11 @@ int main(int argc, char** argv)
     // Viewport
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // Mouse
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetMouseButtonCallback(window, click_callback);
 
     // Enable z sorting
     glEnable(GL_DEPTH_TEST);
@@ -165,11 +186,7 @@ int main(int argc, char** argv)
     shader.set("texture1", 0);
     shader.set("texture2", 1);
 
-    glm::mat4 view(1);
-    view = glm::translate(view, { 0, 0, -3 });
-
     glm::mat4 projection;
-    projection = glm::perspective(glm::radians(45.f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, .1f, 100.f);
 
     std::vector<glm::vec3> cube_positions {
         glm::vec3(0.0f, 0.0f, 0.0f),
@@ -191,25 +208,28 @@ int main(int argc, char** argv)
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
-        processInput(window);
+        process_input(window);
 
         // Draw
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        float timeValue = glfwGetTime();
-        float greenValue = sin(timeValue) / 2.0f + 0.5f;
+        float current_time = glfwGetTime();
+        delta_time = current_time - last_frame;
+        last_frame = glfwGetTime();
+
+        float greenValue = sin(current_time) / 2.0f + 0.5f;
 
         // Temporary ?
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-        projection = glm::perspective(glm::radians(45.f), (float)width / (float)height, .1f, 100.f);
         //
+        projection = glm::perspective(glm::radians(camera.fov()), (float)width / (float)height, .1f, 100.f);
 
         shader.use();
         shader.set("ourColor", glm::vec4(COLOR_RED, greenValue, COLOR_BLUE, COLOR_ALPHA));
         shader.set("projection", projection);
-        shader.set("view", view);
+        shader.set("view", camera.get_view_matrix());
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
@@ -222,7 +242,7 @@ int main(int argc, char** argv)
             glm::mat4 model(1);
             model = glm::translate(model, cube_positions[i]);
             float angle = 20.0f * i;
-            model = glm::rotate(model, (float)glfwGetTime() * glm::radians(10.f * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
+            model = glm::rotate(model, current_time * glm::radians(10.f * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
             shader.set("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
@@ -250,10 +270,54 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-void processInput(GLFWwindow* window)
+void process_input(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        camera.look_at({ 0, 0, 0 });
+
+    const float camera_speed = MOVEMENT_SPEED * delta_time;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        player_position += camera_speed * camera.front();
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        player_position -= camera_speed * camera.front();
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        player_position -= glm::normalize(glm::cross(camera.front(), camera.up())) * camera_speed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        player_position += glm::normalize(glm::cross(camera.front(), camera.up())) * camera_speed;
+    camera.move_to(player_position);
+}
+
+void mouse_callback(GLFWwindow* window, double position_x, double position_y)
+{
+    if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED)
+        return;
+    float offset_x = position_x - last_x;
+    float offset_y = last_y - position_y;
+    last_x = position_x;
+    last_y = position_y;
+
+    offset_x *= MOUSE_SENSITIVITY;
+    offset_y *= MOUSE_SENSITIVITY;
+
+    camera.rotate(offset_x, offset_y);
+}
+
+void scroll_callback(GLFWwindow* window, double offset_x, double offset_y)
+{
+    camera.zoom(offset_y);
+}
+
+void click_callback(GLFWwindow* window, int input, int action, int mods)
+{
+    if (input == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        double position_x, position_y;
+        glfwGetCursorPos(window, &position_x, &position_y);
+        last_x = position_x;
+        last_y = position_y;
+    }
 }
 
 unsigned load_texture(const char* path)
