@@ -6,6 +6,7 @@
 
 #include <GLFW/glfw3.h>
 #include <fstream>
+#include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <sstream>
@@ -94,6 +95,13 @@ void Shader::set(const std::string& name, int value) const
 {
     int uniform_location = glGetUniformLocation(ID_, name.c_str());
     glUniform1i(uniform_location, value);
+}
+
+template <>
+void Shader::set(const std::string& name, glm::vec3 value) const
+{
+    int uniform_location = glGetUniformLocation(ID_, name.c_str());
+    glUniform3fv(uniform_location, 1, glm::value_ptr(value));
 }
 
 template <>

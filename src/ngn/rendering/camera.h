@@ -1,5 +1,6 @@
 #pragma once
 
+#include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 
 #include <array>
@@ -49,6 +50,7 @@ public:
     float fov();
     glm::vec3 front();
     glm::vec3 up() const;
+    glm::vec3 position() const;
 
 private:
     /**
