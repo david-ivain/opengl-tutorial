@@ -98,6 +98,13 @@ void Shader::set(const std::string& name, int value) const
 }
 
 template <>
+void Shader::set(const std::string& name, float value) const
+{
+    int uniform_location = glGetUniformLocation(ID_, name.c_str());
+    glUniform1f(uniform_location, value);
+}
+
+template <>
 void Shader::set(const std::string& name, glm::vec3 value) const
 {
     int uniform_location = glGetUniformLocation(ID_, name.c_str());
