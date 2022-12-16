@@ -92,12 +92,12 @@ int main(int argc, char** argv)
     glEnable(GL_DEPTH_TEST);
 
     // Triangle init
-    std::vector<float> vertices {
-        -.5, .5, 0, 1, 0, 0, 0, 1, // top left
-        -.5, -.5, 0, 0, 1, 0, 0, 0, // bottom left
-        .5, -.5, 0, 0, 0, 1, 1, 0, // bottom right
-        .5, .5, 0, 1, 1, 0, 1, 1, // top right
-    };
+    // std::vector<float> vertices {
+    //     -.5, .5, 0, 1, 0, 0, 0, 1, // top left
+    //     -.5, -.5, 0, 0, 1, 0, 0, 0, // bottom left
+    //     .5, -.5, 0, 0, 0, 1, 1, 0, // bottom right
+    //     .5, .5, 0, 1, 1, 0, 1, 1, // top right
+    // };
 
     std::vector<float> cube_vertices {
         -0.5f, -0.5f, -0.5f, 0, 0, -1, 0.0f, 0.0f,
@@ -143,10 +143,10 @@ int main(int argc, char** argv)
         -0.5f, 0.5f, -0.5f, 0, 1, 0, 0.0f, 1.0f
     };
 
-    std::vector<unsigned> indices {
-        0, 1, 2, // t1
-        2, 3, 0, // t2
-    };
+    // std::vector<unsigned> indices {
+    //     0, 1, 2, // t1
+    //     2, 3, 0, // t2
+    // };
 
     // Buffers init
     unsigned VAO, VBO, EBO;
@@ -159,9 +159,9 @@ int main(int argc, char** argv)
     // glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cube_vertices.size(), cube_vertices.data(), GL_STATIC_DRAW);
 
-    glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * indices.size(), indices.data(), GL_STATIC_DRAW);
+    // glGenBuffers(1, &EBO);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * indices.size(), indices.data(), GL_STATIC_DRAW);
 
     /*
     // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), NULL);
@@ -200,10 +200,16 @@ int main(int argc, char** argv)
 
     // ngn::Shader shader("assets/shaders/tutorial.vert", "assets/shaders/tutorial.frag");
 
+    glm::vec3 light_color { 1, 1, 1 };
+    glm::vec3 diffuse_color = light_color * glm::vec3 { .5 };
+    glm::vec3 ambient_color = light_color * glm::vec3 { .1 };
+
+    glm::vec3 material_ambient_color { 1, .5, .31 };
+    glm::vec3 material_diffuse_color { 1, .5, .31 };
+    glm::vec3 material_specular_color { .5 };
+    float material_shininess = 32;
+
     ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light.frag");
-    lighted_shader.use();
-    lighted_shader.set("objectColor", glm::vec3 { 1, .5, .31 });
-    lighted_shader.set("lightColor", glm::vec3 { 1, 1, 1 });
 
     ngn::Shader light_source_shader("assets/shaders/light.vert", "assets/shaders/light_source.frag");
 
@@ -254,7 +260,7 @@ int main(int argc, char** argv)
         delta_time = current_time - last_frame;
         last_frame = glfwGetTime();
 
-        float greenValue = sin(current_time) / 2.0f + 0.5f;
+        // float greenValue = sin(current_time) / 2.0f + 0.5f;
 
         // Temporary ?
         int width, height;
@@ -273,6 +279,7 @@ int main(int argc, char** argv)
         light_source_shader.set("projection", projection);
         light_source_shader.set("model", light_source_model);
         light_source_shader.set("view", view);
+        light_source_shader.set("color", light_color);
         glBindVertexArray(light_VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -281,7 +288,14 @@ int main(int argc, char** argv)
         lighted_shader.set("model", lighted_model);
         lighted_shader.set("view", view);
         lighted_shader.set("viewPos", camera.position());
-        lighted_shader.set("lightPos", light_source_position);
+        lighted_shader.set("material.ambient", material_ambient_color);
+        lighted_shader.set("material.diffuse", material_diffuse_color);
+        lighted_shader.set("material.specular", material_specular_color);
+        lighted_shader.set("material.shininess", material_shininess);
+        lighted_shader.set("light.position", light_source_position);
+        lighted_shader.set("light.ambient", ambient_color);
+        lighted_shader.set("light.diffuse", diffuse_color);
+        lighted_shader.set("light.specular", light_color);
         // glDrawArrays(GL_TRIANGLES, 0, 36);
         // glBindVertexArray(0);
 
