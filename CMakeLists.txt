@@ -14,6 +14,7 @@ find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 add_executable(app
 src/main.cpp
@@ -25,6 +26,6 @@ src/ngn/rendering/camera.cpp
 )
 
 target_include_directories(app PRIVATE ${STB_INCLUDE_DIRS})
-target_link_libraries(app PRIVATE glfw glm::glm glad::glad ${OPENGL_LIBRARIES})
+target_link_libraries(app PRIVATE glfw glm::glm glad::glad imgui::imgui ${OPENGL_LIBRARIES})
 
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})

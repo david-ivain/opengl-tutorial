@@ -1,4 +1,3 @@
-#include <glm/matrix.hpp>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -14,7 +13,12 @@
 #include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/matrix.hpp>
 #include <glm/trigonometric.hpp>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 #include <math.h>
 #include <vector>
 
@@ -45,6 +49,26 @@ void mouse_callback(GLFWwindow* window, double position_x, double position_y);
 void scroll_callback(GLFWwindow* window, double offset_x, double offset_y);
 void click_callback(GLFWwindow* window, int input, int action, int mods);
 unsigned load_texture(const char* path);
+
+struct ImGuiControls {
+    struct {
+        glm::vec3 color;
+        float ambient_strength;
+        float diffuse_strength;
+    } light;
+    struct {
+        glm::vec3 color;
+        float specular;
+        float shininess;
+    } material;
+    struct {
+        float light_speed;
+        float light_distance;
+        float cubes_rotation_speed;
+    } elements;
+};
+
+void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls);
 
 int main(int argc, char** argv)
 {
@@ -90,6 +114,19 @@ int main(int argc, char** argv)
 
     // Enable z sorting
     glEnable(GL_DEPTH_TEST);
+
+    // imgui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io;
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330 core");
 
     // Triangle init
     // std::vector<float> vertices {
@@ -200,14 +237,20 @@ int main(int argc, char** argv)
 
     // ngn::Shader shader("assets/shaders/tutorial.vert", "assets/shaders/tutorial.frag");
 
-    glm::vec3 light_color { 1, 1, 1 };
-    glm::vec3 diffuse_color = light_color * glm::vec3 { .5 };
-    glm::vec3 ambient_color = light_color * glm::vec3 { .1 };
-
-    glm::vec3 material_ambient_color { 1, .5, .31 };
-    glm::vec3 material_diffuse_color { 1, .5, .31 };
-    glm::vec3 material_specular_color { .5 };
-    float material_shininess = 32;
+    ImGuiControls imgui_controls {
+        .light {
+            .color { 1, 1, 1 },
+            .ambient_strength = .1,
+            .diffuse_strength = .5 },
+        .material {
+            .color { 1, .5, .31 },
+            .specular = .5,
+            .shininess = 32 },
+        .elements {
+            .light_speed = 1,
+            .light_distance = 10,
+            .cubes_rotation_speed = 10 }
+    };
 
     ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light.frag");
 
@@ -240,8 +283,8 @@ int main(int argc, char** argv)
     glm::mat4 lighted_model(1.0);
 
     glm::mat4 light_source_model(1.0);
-    light_source_model = glm::translate(light_source_model, light_source_position);
-    light_source_model = glm::scale(light_source_model, glm::vec3 { .2 });
+
+    bool is_material_controls_open = true;
 
 // Optional
 #ifdef WIREFRAME_MODE
@@ -270,16 +313,19 @@ int main(int argc, char** argv)
 
         glm::mat4 view = camera.get_view_matrix();
 
-        light_source_position = glm::vec3 { cos(current_time) * 10, 0, sin(current_time) * 10 };
+        light_source_position = glm::vec3 { cos(current_time * imgui_controls.elements.light_speed) * imgui_controls.elements.light_distance, 0, sin(current_time * imgui_controls.elements.light_speed) * imgui_controls.elements.light_distance };
         light_source_model = glm::mat4(1.0);
         light_source_model = glm::translate(light_source_model, light_source_position);
         light_source_model = glm::scale(light_source_model, glm::vec3 { .2 });
+
+        glm::vec3 diffuse_color = imgui_controls.light.color * glm::vec3 { imgui_controls.light.diffuse_strength };
+        glm::vec3 ambient_color = imgui_controls.light.color * glm::vec3 { imgui_controls.light.ambient_strength };
 
         light_source_shader.use();
         light_source_shader.set("projection", projection);
         light_source_shader.set("model", light_source_model);
         light_source_shader.set("view", view);
-        light_source_shader.set("color", light_color);
+        light_source_shader.set("color", imgui_controls.light.color);
         glBindVertexArray(light_VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -288,14 +334,14 @@ int main(int argc, char** argv)
         lighted_shader.set("model", lighted_model);
         lighted_shader.set("view", view);
         lighted_shader.set("viewPos", camera.position());
-        lighted_shader.set("material.ambient", material_ambient_color);
-        lighted_shader.set("material.diffuse", material_diffuse_color);
-        lighted_shader.set("material.specular", material_specular_color);
-        lighted_shader.set("material.shininess", material_shininess);
+        lighted_shader.set("material.ambient", imgui_controls.material.color);
+        lighted_shader.set("material.diffuse", imgui_controls.material.color);
+        lighted_shader.set("material.specular", glm::vec3 { imgui_controls.material.specular });
+        lighted_shader.set("material.shininess", imgui_controls.material.shininess);
         lighted_shader.set("light.position", light_source_position);
         lighted_shader.set("light.ambient", ambient_color);
         lighted_shader.set("light.diffuse", diffuse_color);
-        lighted_shader.set("light.specular", light_color);
+        lighted_shader.set("light.specular", imgui_controls.light.color);
         // glDrawArrays(GL_TRIANGLES, 0, 36);
         // glBindVertexArray(0);
 
@@ -315,12 +361,14 @@ int main(int argc, char** argv)
             glm::mat4 model(1);
             model = glm::translate(model, cube_positions[i]);
             float angle = 20.0f * i;
-            model = glm::rotate(model, current_time * glm::radians(10.f * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
+            model = glm::rotate(model, current_time * glm::radians(imgui_controls.elements.cubes_rotation_speed * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
             lighted_shader.set("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
         glBindVertexArray(0);
+
+        display_imgui_controls(is_material_controls_open, imgui_controls);
 
         // After draw
         glfwSwapBuffers(window);
@@ -384,7 +432,7 @@ void scroll_callback(GLFWwindow* window, double offset_x, double offset_y)
 
 void click_callback(GLFWwindow* window, int input, int action, int mods)
 {
-    if (input == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+    if (input == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         double position_x, position_y;
         glfwGetCursorPos(window, &position_x, &position_y);
@@ -431,4 +479,51 @@ unsigned load_texture(const char* path)
     stbi_image_free(data);
 
     return texture;
+}
+
+void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls)
+{
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+
+    if (is_open) {
+        ImGui::Begin("Controls", &is_open, ImGuiWindowFlags_MenuBar);
+
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("Close")) {
+                    is_open = false;
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+
+        if (ImGui::CollapsingHeader("Light")) {
+            ImGui::ColorEdit3("Color", glm::value_ptr(imgui_controls.light.color));
+            ImGui::SliderFloat("Diffuse strength", &imgui_controls.light.diffuse_strength, 0, 1);
+            ImGui::SliderFloat("Ambient strength", &imgui_controls.light.ambient_strength, 0, 1);
+        }
+
+        if (ImGui::CollapsingHeader("Material")) {
+            ImGui::ColorEdit3("Color", glm::value_ptr(imgui_controls.material.color));
+            ImGui::SliderFloat("Specular", &imgui_controls.material.specular, 0, 1);
+            ImGui::InputFloat("Shininess", &imgui_controls.material.shininess, 1);
+        }
+
+        if (ImGui::CollapsingHeader("Elements")) {
+            ImGui::DragFloat("Light speed", &imgui_controls.elements.light_speed, .01);
+            ImGui::DragFloat("Light distance", &imgui_controls.elements.light_distance);
+            ImGui::DragFloat("Cubes rotation speed", &imgui_controls.elements.cubes_rotation_speed);
+        }
+
+        ImGui::End();
+    }
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

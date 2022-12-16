@@ -7,6 +7,13 @@
         "glfw3",
         "glm",
         "glad",
-        "stb"
+        "stb",
+        {
+            "name": "imgui",
+            "features": [
+                "glfw-binding",
+                "opengl3-binding"
+            ]
+        }
     ]
 }
