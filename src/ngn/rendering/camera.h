@@ -45,10 +45,10 @@ public:
     void move_to(glm::vec3);
     void zoom(float angle);
 
-    glm::mat4 get_view_matrix();
+    glm::mat4 get_view_matrix() const;
 
-    float fov();
-    glm::vec3 front();
+    float fov() const;
+    glm::vec3 front() const;
     glm::vec3 up() const;
     glm::vec3 position() const;
 

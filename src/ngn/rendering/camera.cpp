@@ -66,17 +66,17 @@ void Camera::zoom(float angle)
         fov_ = fov_constraints_[1];
 }
 
-glm::mat4 Camera::get_view_matrix()
+glm::mat4 Camera::get_view_matrix() const
 {
     return glm::lookAt(position_, position_ + front_, up_);
 }
 
-float Camera::fov()
+float Camera::fov() const
 {
     return fov_;
 }
 
-glm::vec3 Camera::front()
+glm::vec3 Camera::front() const
 {
     return front_;
 }
