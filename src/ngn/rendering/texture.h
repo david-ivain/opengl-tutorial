@@ -31,10 +31,12 @@ public:
 
     unsigned id() const;
     TextureType::Value type() const;
+    const std::string& path() const;
 
 private:
     unsigned id_;
     TextureType::Value type_;
+    std::string path_;
 };
 
 }

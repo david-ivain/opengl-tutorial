@@ -1,4 +1,5 @@
 #include "ngn/ngn.h"
+#include "ngn/rendering/model.h"
 
 #include <glad/glad.h>
 
@@ -43,6 +44,7 @@ void mouse_callback(GLFWwindow* window, double position_x, double position_y);
 void scroll_callback(GLFWwindow* window, double offset_x, double offset_y);
 void click_callback(GLFWwindow* window, int input, int action, int mods);
 void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader);
+void draw_model(const ngn::Model& model, const ngn::Shader& shader);
 
 struct ImGuiControls {
     struct {
@@ -203,6 +205,8 @@ int main(int argc, char** argv)
     };
     LOG("Cube mesh loaded.");
 
+    ngn::Model backpack_model { "assets/models/backpack/backpack.obj" };
+
     ImGuiControls imgui_controls {
         .direction_light {
             .color { 1, 1, 1 },
@@ -338,6 +342,11 @@ int main(int argc, char** argv)
         lighted_shader.set("spotLight.diffuse", imgui_controls.spot_light.color * imgui_controls.spot_light.diffuse_strength * static_cast<float>(imgui_controls.spot_light.enable));
         lighted_shader.set("spotLight.specular", imgui_controls.spot_light.color * static_cast<float>(imgui_controls.spot_light.enable));
 
+        glm::mat4 backpack_model_matrix { 1 };
+        backpack_model_matrix = glm::translate(backpack_model_matrix, { 5, 0, 0 });
+        lighted_shader.set("model", backpack_model_matrix);
+        draw_model(backpack_model, lighted_shader);
+
         for (size_t i = 0; i < cube_positions.size(); i++) {
             glm::mat4 model(1);
             model = glm::translate(model, cube_positions[i]);
@@ -445,6 +454,12 @@ void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader)
     glBindVertexArray(mesh.VAO());
     glDrawElements(GL_TRIANGLES, mesh.indices().size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+}
+
+void draw_model(const ngn::Model& model, const ngn::Shader& shader)
+{
+    for (auto& mesh : model.meshes())
+        draw_mesh(mesh, shader);
 }
 
 void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls)

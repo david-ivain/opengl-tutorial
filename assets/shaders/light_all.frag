@@ -105,7 +105,7 @@ void main()
 
     vec3 emission = vec3(texture(material.emission, TexCoord));
 
-    vec3 result = CalcDirLight(dirLight, norm, viewDir) + CalcSpotLight(spotLight, norm, FragPos, viewDir) + emission;
+    vec3 result = CalcDirLight(dirLight, norm, viewDir) + CalcSpotLight(spotLight, norm, FragPos, viewDir); // + emission;
 
     for (int i = 0; i < NR_POINT_LIGHTS; i++)
         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);
