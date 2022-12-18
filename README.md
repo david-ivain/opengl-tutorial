@@ -7,3 +7,5 @@ Following the tutorial at [learnopengl.com](https://learnopengl.com/).
 ![Result of the "lighting" sub-section](./readme_files/lighting.png)
 
 ![Result of the "materials" sub-section](./readme_files/advanced_lighting.png)
+
+![Result of the "lightning maps" sub-section](./readme_files/textures.png)

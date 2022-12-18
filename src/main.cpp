@@ -57,8 +57,6 @@ struct ImGuiControls {
         float diffuse_strength;
     } light;
     struct {
-        glm::vec3 color;
-        float specular;
         float shininess;
     } material;
     struct {
@@ -235,16 +233,12 @@ int main(int argc, char** argv)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    // ngn::Shader shader("assets/shaders/tutorial.vert", "assets/shaders/tutorial.frag");
-
     ImGuiControls imgui_controls {
         .light {
             .color { 1, 1, 1 },
-            .ambient_strength = .1,
-            .diffuse_strength = .5 },
+            .ambient_strength = .3,
+            .diffuse_strength = 1. },
         .material {
-            .color { 1, .5, .31 },
-            .specular = .5,
             .shininess = 32 },
         .elements {
             .light_speed = 1,
@@ -256,14 +250,19 @@ int main(int argc, char** argv)
 
     ngn::Shader light_source_shader("assets/shaders/light.vert", "assets/shaders/light_source.frag");
 
-    // unsigned texture1 = load_texture("assets/images/container.jpg");
-    // unsigned texture2 = load_texture("assets/images/awesomeface.png");
-    // if (!texture1 || !texture2)
-    //     return -1;
-
-    // shader.use();
-    // shader.set("texture1", 0);
-    // shader.set("texture2", 1);
+    unsigned diffuse_map = load_texture("assets/images/container2.png");
+    unsigned specular_map = load_texture("assets/images/container2_specular.png");
+    // unsigned emission_map = load_texture("assets/images/matrix.jpg");
+    unsigned emission_map = load_texture("assets/images/black.png");
+    if (
+        !diffuse_map
+        || !specular_map
+        || !emission_map)
+        return -1;
+    lighted_shader.use();
+    lighted_shader.set("material.diffuse", 0);
+    lighted_shader.set("material.specular", 1);
+    lighted_shader.set("material.emission", 2);
 
     glm::mat4 projection;
 
@@ -303,8 +302,6 @@ int main(int argc, char** argv)
         delta_time = current_time - last_frame;
         last_frame = glfwGetTime();
 
-        // float greenValue = sin(current_time) / 2.0f + 0.5f;
-
         // Temporary ?
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
@@ -334,27 +331,18 @@ int main(int argc, char** argv)
         lighted_shader.set("model", lighted_model);
         lighted_shader.set("view", view);
         lighted_shader.set("viewPos", camera.position());
-        lighted_shader.set("material.ambient", imgui_controls.material.color);
-        lighted_shader.set("material.diffuse", imgui_controls.material.color);
-        lighted_shader.set("material.specular", glm::vec3 { imgui_controls.material.specular });
         lighted_shader.set("material.shininess", imgui_controls.material.shininess);
         lighted_shader.set("light.position", light_source_position);
         lighted_shader.set("light.ambient", ambient_color);
         lighted_shader.set("light.diffuse", diffuse_color);
         lighted_shader.set("light.specular", imgui_controls.light.color);
-        // glDrawArrays(GL_TRIANGLES, 0, 36);
-        // glBindVertexArray(0);
 
-        // shader.use();
-        // shader.set("ourColor", glm::vec4(COLOR_RED, greenValue, COLOR_BLUE, COLOR_ALPHA));
-        // shader.set("projection", projection);
-        // shader.set("view", camera.view);
-
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, texture1);
-        // glActiveTexture(GL_TEXTURE1);
-        // glBindTexture(GL_TEXTURE_2D, texture2);
-        // glBindVertexArray(VAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuse_map);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, specular_map);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, emission_map);
 
         // // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         for (size_t i = 0; i < cube_positions.size(); i++) {
@@ -510,8 +498,6 @@ void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls)
         }
 
         if (ImGui::CollapsingHeader("Material")) {
-            ImGui::ColorEdit3("Color", glm::value_ptr(imgui_controls.material.color));
-            ImGui::SliderFloat("Specular", &imgui_controls.material.specular, 0, 1);
             ImGui::InputFloat("Shininess", &imgui_controls.material.shininess, 1);
         }
 
