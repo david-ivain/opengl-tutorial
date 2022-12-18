@@ -1,9 +1,4 @@
-#include "ngn/rendering/camera.h"
-#include "ngn/rendering/mesh.h"
-#include "ngn/rendering/shader.h"
-#include "ngn/rendering/texture.h"
-#include "ngn/rendering/vertex.h"
-#include "ngn/utils/log.h"
+#include "ngn/ngn.h"
 
 #include <glad/glad.h>
 
@@ -47,7 +42,7 @@ void process_input(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double position_x, double position_y);
 void scroll_callback(GLFWwindow* window, double offset_x, double offset_y);
 void click_callback(GLFWwindow* window, int input, int action, int mods);
-void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader, const std::vector<ngn::Texture>& textures);
+void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader);
 
 struct ImGuiControls {
     struct {
@@ -192,7 +187,20 @@ int main(int argc, char** argv)
     for (unsigned i = 0; i < indices.capacity(); i++)
         indices.push_back(i);
 
-    ngn::Mesh cube_mesh { cube_vertices, indices };
+    ngn::Mesh light_mesh {
+        cube_vertices,
+        indices,
+        {},
+    };
+    ngn::Mesh container_mesh {
+        cube_vertices,
+        indices,
+        {
+            { "assets/images/container2.png", ngn::TextureType::Diffuse },
+            { "assets/images/container2_specular.png", ngn::TextureType::Specular },
+            { "assets/images/black.png", ngn::TextureType::Emission },
+        },
+    };
     LOG("Cube mesh loaded.");
 
     ImGuiControls imgui_controls {
@@ -217,12 +225,12 @@ int main(int argc, char** argv)
     ngn::Shader light_source_shader("assets/shaders/light.vert", "assets/shaders/light_source.frag");
     LOG("Shaders loaded.");
 
-    std::vector<ngn::Texture> container_textures;
-    container_textures.reserve(3);
-    container_textures.emplace_back("assets/images/container2.png", ngn::TextureType::Diffuse);
-    container_textures.emplace_back("assets/images/container2_specular.png", ngn::TextureType::Specular);
-    container_textures.emplace_back("assets/images/black.png", ngn::TextureType::Emission);
-    LOG("Textures loaded.");
+    // std::vector<ngn::Texture> container_textures;
+    // container_textures.reserve(3);
+    // container_textures.emplace_back("assets/images/container2.png", ngn::TextureType::Diffuse);
+    // container_textures.emplace_back("assets/images/container2_specular.png", ngn::TextureType::Specular);
+    // container_textures.emplace_back("assets/images/black.png", ngn::TextureType::Emission);
+    // LOG("Textures loaded.");
 
     glm::mat4 projection;
 
@@ -305,7 +313,7 @@ int main(int argc, char** argv)
             model = glm::scale(model, glm::vec3 { .2 });
             light_source_shader.use();
             light_source_shader.set("model", model);
-            draw_mesh(cube_mesh, light_source_shader, {});
+            draw_mesh(light_mesh, light_source_shader);
 
             lighted_shader.use();
             lighted_shader.set(std::string("pointLights[") + std::to_string(i) + "].diffuse", point_diffuse_color);
@@ -336,7 +344,7 @@ int main(int argc, char** argv)
             float angle = 20.0f * i;
             model = glm::rotate(model, current_time * glm::radians(imgui_controls.elements.cubes_rotation_speed * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
             lighted_shader.set("model", model);
-            draw_mesh(cube_mesh, lighted_shader, container_textures);
+            draw_mesh(container_mesh, lighted_shader);
         }
 
         glBindVertexArray(0);
@@ -410,11 +418,12 @@ void click_callback(GLFWwindow* window, int input, int action, int mods)
     }
 }
 
-void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader, const std::vector<ngn::Texture>& textures)
+void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader)
 {
     // unsigned int diffuse_number = 1;
     // unsigned int specular_number = 1;
     // unsigned int emission_number = 1;
+    auto& textures = mesh.textures();
     for (int i = 0; i < textures.size(); i++) {
         glActiveTexture(GL_TEXTURE0 + i);
         // std::string number;

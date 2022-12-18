@@ -16,6 +16,11 @@ public:
 private:
 };
 
+struct TextureOptions {
+    std::string path;
+    TextureType::Value type;
+};
+
 class Texture {
 public:
     Texture(const std::string& path, TextureType::Value type);
