@@ -13,3 +13,7 @@ Following the tutorial at [learnopengl.com](https://learnopengl.com/).
 ![Point light](./readme_files/point_light.png)
 
 ![Spot light](./readme_files/spot_light.png)
+
+![Multiple lights](./readme_files/multiple_lights.png)
+
+![Multiple colored lights](./readme_files/multiple_colored_lights.png)

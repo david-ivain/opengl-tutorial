@@ -1,3 +1,4 @@
+#include <string>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -32,6 +33,8 @@ constexpr float COLOR_ALPHA = 1;
 constexpr float MOVEMENT_SPEED = 4;
 constexpr float MOUSE_SENSITIVITY = .1;
 
+constexpr float AMBIENT_STRENGTH = .1;
+
 glm::vec3 player_position(0, 0, -5);
 ngn::Camera camera({ .position = player_position });
 
@@ -55,13 +58,20 @@ struct ImGuiControls {
         glm::vec3 color;
         float ambient_strength;
         float diffuse_strength;
-    } light;
+    } direction_light;
+    struct {
+        glm::vec3 color;
+        float diffuse_strength;
+    } point_light;
+    struct {
+        bool enable;
+        glm::vec3 color;
+        float diffuse_strength;
+    } spot_light;
     struct {
         float shininess;
     } material;
     struct {
-        float light_speed;
-        float light_distance;
         float cubes_rotation_speed;
     } elements;
 };
@@ -234,21 +244,24 @@ int main(int argc, char** argv)
     glBindVertexArray(0);
 
     ImGuiControls imgui_controls {
-        .light {
+        .direction_light {
             .color { 1, 1, 1 },
-            .ambient_strength = .3,
+            .ambient_strength = AMBIENT_STRENGTH,
+            .diffuse_strength = 1. },
+        .point_light {
+            .color { 1, 1, 1 },
+            .diffuse_strength = 1. },
+        .spot_light {
+            .enable = false,
+            .color { 1, 1, 1 },
             .diffuse_strength = 1. },
         .material {
             .shininess = 32 },
         .elements {
-            .light_speed = 1,
-            .light_distance = 10,
             .cubes_rotation_speed = 10 }
     };
 
-    // ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light.frag");
-    // ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/point_light.frag");
-    ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/spot_light.frag");
+    ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light_all.frag");
 
     ngn::Shader light_source_shader("assets/shaders/light.vert", "assets/shaders/light_source.frag");
 
@@ -278,8 +291,24 @@ int main(int argc, char** argv)
         glm::vec3(1.3f, -2.0f, -2.5f),
         glm::vec3(1.5f, 2.0f, -2.5f),
         glm::vec3(1.5f, 0.2f, -1.5f),
-        glm::vec3(-1.3f, 1.0f, -1.5f)
+        glm::vec3(-1.3f, 1.0f, -1.5f),
     };
+
+    std::vector<glm::vec3> point_light_positions = {
+        glm::vec3(.7, .2, 2),
+        glm::vec3(2.3, -3.3, -4),
+        glm::vec3(-4, 2, -12),
+        glm::vec3(0, 0, -3),
+    };
+
+    lighted_shader.use();
+    for (size_t i = 0; i < point_light_positions.size(); i++) {
+        lighted_shader.set(std::string("pointLights[") + std::to_string(i) + "].position", point_light_positions[i]);
+        lighted_shader.set(std::string("pointLights[") + std::to_string(i) + "].ambient", glm::vec3 { 0 });
+        lighted_shader.set(std::string("pointLights[") + std::to_string(i) + "].constant", 1.f);
+        lighted_shader.set(std::string("pointLights[") + std::to_string(i) + "].linear", .09f);
+        lighted_shader.set(std::string("pointLights[") + std::to_string(i) + "].quadratic", .032f);
+    }
 
     glm::mat4 lighted_model(1.0);
 
@@ -313,21 +342,31 @@ int main(int argc, char** argv)
 
         glm::mat4 view = camera.get_view_matrix();
 
-        light_source_position = glm::vec3 { cos(current_time * imgui_controls.elements.light_speed) * imgui_controls.elements.light_distance, 0, sin(current_time * imgui_controls.elements.light_speed) * imgui_controls.elements.light_distance };
-        light_source_model = glm::mat4(1.0);
-        light_source_model = glm::translate(light_source_model, light_source_position);
-        light_source_model = glm::scale(light_source_model, glm::vec3 { .2 });
+        glm::vec3 point_diffuse_color = imgui_controls.point_light.color * imgui_controls.point_light.diffuse_strength;
+        glm::vec3 dir_diffuse_color = imgui_controls.direction_light.color * imgui_controls.direction_light.diffuse_strength;
 
-        glm::vec3 diffuse_color = imgui_controls.light.color * glm::vec3 { imgui_controls.light.diffuse_strength };
-        glm::vec3 ambient_color = imgui_controls.light.color * glm::vec3 { imgui_controls.light.ambient_strength };
+        glm::vec3 ambient_color = glm::vec3 { imgui_controls.direction_light.ambient_strength };
 
         light_source_shader.use();
         light_source_shader.set("projection", projection);
-        light_source_shader.set("model", light_source_model);
         light_source_shader.set("view", view);
-        light_source_shader.set("color", imgui_controls.light.color);
+        light_source_shader.set("color", point_diffuse_color);
+
         glBindVertexArray(light_VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        for (size_t i = 0; i < point_light_positions.size(); i++) {
+            auto& point_light_position = point_light_positions[i];
+
+            glm::mat4 model(1);
+            model = glm::translate(model, point_light_position);
+            model = glm::scale(model, glm::vec3 { .2 });
+            light_source_shader.use();
+            light_source_shader.set("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+
+            lighted_shader.use();
+            lighted_shader.set(std::string("pointLights[") + std::to_string(i) + "].diffuse", point_diffuse_color);
+            lighted_shader.set(std::string("pointLights[") + std::to_string(i) + "].specular", imgui_controls.point_light.color);
+        }
 
         lighted_shader.use();
         lighted_shader.set("projection", projection);
@@ -335,18 +374,17 @@ int main(int argc, char** argv)
         lighted_shader.set("view", view);
         lighted_shader.set("viewPos", camera.position());
         lighted_shader.set("material.shininess", imgui_controls.material.shininess);
-        // lighted_shader.set("light.direction", glm::vec3 { -.2, -1, -.3 });
-        // lighted_shader.set("light.position", light_source_position);
-        lighted_shader.set("light.direction", camera.front());
-        lighted_shader.set("light.position", camera.position());
-        lighted_shader.set("light.cutOff", glm::cos(glm::radians(12.5f)));
-        lighted_shader.set("light.outerCutOff", glm::cos(glm::radians(17.5f)));
-        lighted_shader.set("light.ambient", ambient_color);
-        lighted_shader.set("light.diffuse", diffuse_color);
-        lighted_shader.set("light.specular", imgui_controls.light.color);
-        lighted_shader.set("light.constant", 1.f);
-        lighted_shader.set("light.linear", .09f);
-        lighted_shader.set("light.quadratic", .032f);
+        lighted_shader.set("dirLight.direction", glm::vec3 { -.2, -1, -.3 });
+        lighted_shader.set("dirLight.ambient", ambient_color);
+        lighted_shader.set("dirLight.diffuse", dir_diffuse_color);
+        lighted_shader.set("dirLight.specular", imgui_controls.direction_light.color);
+        lighted_shader.set("spotLight.direction", camera.front());
+        lighted_shader.set("spotLight.position", camera.position());
+        lighted_shader.set("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+        lighted_shader.set("spotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
+        lighted_shader.set("spotLight.ambient", glm::vec3 { 0 });
+        lighted_shader.set("spotLight.diffuse", imgui_controls.spot_light.color * imgui_controls.spot_light.diffuse_strength * static_cast<float>(imgui_controls.spot_light.enable));
+        lighted_shader.set("spotLight.specular", imgui_controls.spot_light.color * static_cast<float>(imgui_controls.spot_light.enable));
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, diffuse_map);
@@ -355,7 +393,6 @@ int main(int argc, char** argv)
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, emission_map);
 
-        // // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         for (size_t i = 0; i < cube_positions.size(); i++) {
             glm::mat4 model(1);
             model = glm::translate(model, cube_positions[i]);
@@ -502,10 +539,21 @@ void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls)
             ImGui::EndMenuBar();
         }
 
-        if (ImGui::CollapsingHeader("Light")) {
-            ImGui::ColorEdit3("Color", glm::value_ptr(imgui_controls.light.color));
-            ImGui::SliderFloat("Diffuse strength", &imgui_controls.light.diffuse_strength, 0, 1);
-            ImGui::SliderFloat("Ambient strength", &imgui_controls.light.ambient_strength, 0, 1);
+        if (ImGui::CollapsingHeader("Direction Light")) {
+            ImGui::ColorEdit3("Color", glm::value_ptr(imgui_controls.direction_light.color));
+            ImGui::SliderFloat("Diffuse strength", &imgui_controls.direction_light.diffuse_strength, 0, 1);
+            ImGui::SliderFloat("Ambient strength", &imgui_controls.direction_light.ambient_strength, 0, 1);
+        }
+
+        if (ImGui::CollapsingHeader("Point Lights")) {
+            ImGui::ColorEdit3("Color", glm::value_ptr(imgui_controls.point_light.color));
+            ImGui::SliderFloat("Diffuse strength", &imgui_controls.point_light.diffuse_strength, 0, 1);
+        }
+
+        if (ImGui::CollapsingHeader("Spot Light")) {
+            ImGui::Checkbox("Enable", &imgui_controls.spot_light.enable);
+            ImGui::ColorEdit3("Color", glm::value_ptr(imgui_controls.spot_light.color));
+            ImGui::SliderFloat("Diffuse strength", &imgui_controls.spot_light.diffuse_strength, 0, 1);
         }
 
         if (ImGui::CollapsingHeader("Material")) {
@@ -513,8 +561,6 @@ void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls)
         }
 
         if (ImGui::CollapsingHeader("Elements")) {
-            ImGui::DragFloat("Light speed", &imgui_controls.elements.light_speed, .01);
-            ImGui::DragFloat("Light distance", &imgui_controls.elements.light_distance);
             ImGui::DragFloat("Cubes rotation speed", &imgui_controls.elements.cubes_rotation_speed);
         }
 
