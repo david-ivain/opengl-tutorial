@@ -1,13 +1,7 @@
 #include "camera.h"
 
 #include "../utils/log.h"
-
-#include <cmath>
-#include <glm/common.hpp>
 #include <glm/ext/matrix_transform.hpp>
-#include <glm/fwd.hpp>
-#include <glm/geometric.hpp>
-#include <glm/trigonometric.hpp>
 
 namespace ngn {
 

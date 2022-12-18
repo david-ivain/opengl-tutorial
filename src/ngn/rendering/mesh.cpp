@@ -1,14 +1,12 @@
 #include "mesh.h"
 
 #include "../utils/log.h"
-#include "texture.h"
 
 #include <glad/glad.h>
-#include <string>
 
 namespace ngn {
 
-Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned>& indices, const std::vector<TextureOptions>& texture_options)
+Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned>& indices, const std::vector<Texture>& texture_options)
     : vertices_(vertices)
     , indices_(indices)
 {
@@ -38,8 +36,8 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned>& ind
     glBindVertexArray(0);
 
     textures_.reserve(texture_options.size());
-    for (auto& options : texture_options) {
-        textures_.emplace_back(options.path, options.type);
+    for (auto& texture : texture_options) {
+        textures_.push_back(texture);
     }
 
     LOGF("Mesh { .VAO:%u, .VBO:%u, .EBO:%u } created.", VAO_, VBO_, EBO_);
@@ -65,7 +63,7 @@ Mesh::Mesh(Mesh&& other)
     other.EBO_ = 0;
     textures_.reserve(other.textures_.size());
     for (auto& texture : other.textures_) {
-        textures_.emplace_back(std::move(texture));
+        textures_.push_back(texture);
     }
     other.textures_.clear();
 }

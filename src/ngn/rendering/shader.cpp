@@ -4,9 +4,7 @@
 
 #include <glad/glad.h>
 
-#include <GLFW/glfw3.h>
 #include <fstream>
-#include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <sstream>

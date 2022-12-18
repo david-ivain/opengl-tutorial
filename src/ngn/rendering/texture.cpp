@@ -1,14 +1,11 @@
 #include "texture.h"
 
 #include "../utils/log.h"
-#include <string>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #include <glad/glad.h>
-
-#include <GLFW/glfw3.h>
 
 namespace ngn {
 
@@ -66,22 +63,6 @@ Texture::Texture(const std::string& path, TextureType::Value type)
     LOGF("Texture %u created.", id_);
 }
 
-Texture::~Texture()
-{
-    if (id_ == 0)
-        return;
-    LOGF("Texture %u deleted.", id_);
-    glDeleteTextures(1, &id_);
-}
-
-Texture::Texture(Texture&& other)
-    : id_(other.id_)
-    , type_(other.type_)
-{
-    LOGF("Texture %u moved.", id_);
-    other.id_ = 0;
-}
-
 unsigned Texture::id() const
 {
     return id_;
@@ -95,6 +76,28 @@ TextureType::Value Texture::type() const
 const std::string& Texture::path() const
 {
     return path_;
+}
+
+TexturePool TexturePool::instance_ {};
+
+TexturePool::~TexturePool()
+{
+    for (auto& texture : textures_) {
+        LOGF("Texture %u deleted.", texture.id());
+        glDeleteTextures(1, &texture.id_);
+    }
+}
+
+Texture TexturePool::instance_load(const std::string& path, TextureType::Value type)
+{
+    auto existing_texture = std::find_if(textures_.begin(), textures_.end(),
+        [path](const Texture& texture) {
+            return texture.path_ == path;
+        });
+    if (existing_texture != textures_.end())
+        return *existing_texture;
+    textures_.push_back({ path, type });
+    return textures_.back();
 }
 
 }

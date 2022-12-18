@@ -4,9 +4,6 @@
 #include "texture.h"
 
 #include <assimp/scene.h>
-#include <string.h>
-#include <string>
-#include <vector>
 
 namespace ngn {
 
@@ -20,13 +17,12 @@ public:
     const std::vector<Mesh>& meshes() const;
 
 private:
-    void processNode(aiNode* node, const aiScene* scene);
-    void processMesh(aiMesh* mesh, const aiScene* scene);
-    std::vector<TextureOptions> loadMaterialTextures(aiMaterial* mat, aiTextureType type, TextureType::Value type_name);
+    void process_node(aiNode* node, const aiScene* scene);
+    void process_mesh(aiMesh* mesh, const aiScene* scene);
+    std::vector<Texture> load_material_textures(aiMaterial* mat, aiTextureType type, TextureType::Value type_name);
 
     std::vector<Mesh> meshes_;
     std::string directory_;
-    std::vector<std::string> loaded_textures_;
 };
 
 }
