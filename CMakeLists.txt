@@ -19,6 +19,7 @@ find_package(assimp CONFIG REQUIRED)
 
 add_executable(app
 src/main.cpp
+src/ngn/ngn.h
 src/ngn/utils/log.h
 src/ngn/rendering/shader.h
 src/ngn/rendering/shader.cpp
