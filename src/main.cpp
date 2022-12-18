@@ -1,23 +1,14 @@
 #include "ngn/ngn.h"
-#include "ngn/rendering/model.h"
 
 #include <glad/glad.h>
 
 #include <GLFW/glfw3.h>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
-#include <glm/fwd.hpp>
-#include <glm/geometric.hpp>
-#include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/matrix.hpp>
-#include <glm/trigonometric.hpp>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-#include <math.h>
-#include <string>
-#include <vector>
 
 constexpr auto WINDOW_WIDTH = 800;
 constexpr auto WINDOW_HEIGHT = 600;
@@ -198,9 +189,9 @@ int main(int argc, char** argv)
         cube_vertices,
         indices,
         {
-            { "assets/images/container2.png", ngn::TextureType::Diffuse },
-            { "assets/images/container2_specular.png", ngn::TextureType::Specular },
-            { "assets/images/black.png", ngn::TextureType::Emission },
+            ngn::TexturePool::load("assets/images/container2.png", ngn::TextureType::Diffuse),
+            ngn::TexturePool::load("assets/images/container2_specular.png", ngn::TextureType::Specular),
+            ngn::TexturePool::load("assets/images/black.png", ngn::TextureType::Emission),
         },
     };
     LOG("Cube mesh loaded.");
@@ -228,13 +219,6 @@ int main(int argc, char** argv)
     ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light_all.frag");
     ngn::Shader light_source_shader("assets/shaders/light.vert", "assets/shaders/light_source.frag");
     LOG("Shaders loaded.");
-
-    // std::vector<ngn::Texture> container_textures;
-    // container_textures.reserve(3);
-    // container_textures.emplace_back("assets/images/container2.png", ngn::TextureType::Diffuse);
-    // container_textures.emplace_back("assets/images/container2_specular.png", ngn::TextureType::Specular);
-    // container_textures.emplace_back("assets/images/black.png", ngn::TextureType::Emission);
-    // LOG("Textures loaded.");
 
     glm::mat4 projection;
 

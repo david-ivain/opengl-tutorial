@@ -3,14 +3,11 @@
 #include "texture.h"
 #include "vertex.h"
 
-#include <string>
-#include <vector>
-
 namespace ngn {
 
 class Mesh {
 public:
-    Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned>& indices, const std::vector<TextureOptions>& texture_options);
+    Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned>& indices, const std::vector<Texture>& texture_options);
     ~Mesh();
     Mesh(Mesh&&);
 
