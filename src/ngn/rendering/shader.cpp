@@ -78,10 +78,13 @@ Shader::Shader(const std::string& vertex_path, const std::string& fragment_path)
 
     glDeleteShader(vertex);
     glDeleteShader(fragment);
+
+    LOGF("Program %u created.", ID_);
 }
 
 Shader::~Shader()
 {
+    LOGF("Program %u deleted.", ID_);
     glDeleteProgram(ID_);
 }
 

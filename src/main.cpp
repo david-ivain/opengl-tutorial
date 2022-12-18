@@ -1,9 +1,8 @@
-#include <string>
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 #include "ngn/rendering/camera.h"
+#include "ngn/rendering/mesh.h"
 #include "ngn/rendering/shader.h"
+#include "ngn/rendering/texture.h"
+#include "ngn/rendering/vertex.h"
 #include "ngn/utils/log.h"
 
 #include <glad/glad.h>
@@ -21,15 +20,12 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <math.h>
+#include <string>
 #include <vector>
 
 constexpr auto WINDOW_WIDTH = 800;
 constexpr auto WINDOW_HEIGHT = 600;
 constexpr auto WINDOW_TITLE = "App";
-constexpr float COLOR_RED = 1;
-constexpr float COLOR_GREEN = .5;
-constexpr float COLOR_BLUE = .3125;
-constexpr float COLOR_ALPHA = 1;
 constexpr float MOVEMENT_SPEED = 4;
 constexpr float MOUSE_SENSITIVITY = .1;
 
@@ -51,7 +47,7 @@ void process_input(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double position_x, double position_y);
 void scroll_callback(GLFWwindow* window, double offset_x, double offset_y);
 void click_callback(GLFWwindow* window, int input, int action, int mods);
-unsigned load_texture(const char* path);
+void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader, const std::vector<ngn::Texture>& textures);
 
 struct ImGuiControls {
     struct {
@@ -80,16 +76,20 @@ void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls);
 
 int main(int argc, char** argv)
 {
-    LOG("Hello, world!");
-
     // Init
-    glfwInit();
+    if (!glfwInit()) {
+        LOGERR("Failed to initialize GLFW.");
+        return -1;
+    }
+    LOG("GLFW initialized.");
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
+    LOG("OpenGl hints set.");
 
     // Create window
     GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, NULL, NULL);
@@ -98,6 +98,8 @@ int main(int argc, char** argv)
         glfwTerminate();
         return -1;
     }
+    LOG("GLFW window created.");
+
     glfwMakeContextCurrent(window);
 
     // Load glad
@@ -105,6 +107,7 @@ int main(int argc, char** argv)
         LOGERR("Failed to initialize GLAD");
         return -1;
     }
+    LOG("GLAD loaded.");
 
     // Info
     int numberOfAttributes;
@@ -114,14 +117,17 @@ int main(int argc, char** argv)
     // Viewport
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    LOG("Framebuffer size callback set.");
 
     // Mouse
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetMouseButtonCallback(window, click_callback);
+    LOG("Mouse callbacks set.");
 
     // Enable z sorting
     glEnable(GL_DEPTH_TEST);
+    LOG("Depth test enabled.");
 
     // imgui
     IMGUI_CHECKVERSION();
@@ -130,118 +136,64 @@ int main(int argc, char** argv)
     (void)io;
 
     // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
+    LOG("Imgui initialized.");
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
+    ImGui::StyleColorsDark();
 
-    // Triangle init
-    // std::vector<float> vertices {
-    //     -.5, .5, 0, 1, 0, 0, 0, 1, // top left
-    //     -.5, -.5, 0, 0, 1, 0, 0, 0, // bottom left
-    //     .5, -.5, 0, 0, 0, 1, 1, 0, // bottom right
-    //     .5, .5, 0, 1, 1, 0, 1, 1, // top right
-    // };
+    std::vector<ngn::Vertex> cube_vertices {
+        { { -0.5f, -0.5f, -0.5f }, { 0, 0, -1 }, { 0.0f, 0.0f } },
+        { { 0.5f, -0.5f, -0.5f }, { 0, 0, -1 }, { 1.0f, 0.0f } },
+        { { 0.5f, 0.5f, -0.5f }, { 0, 0, -1 }, { 1.0f, 1.0f } },
+        { { 0.5f, 0.5f, -0.5f }, { 0, 0, -1 }, { 1.0f, 1.0f } },
+        { { -0.5f, 0.5f, -0.5f }, { 0, 0, -1 }, { 0.0f, 1.0f } },
+        { { -0.5f, -0.5f, -0.5f }, { 0, 0, -1 }, { 0.0f, 0.0f } },
 
-    std::vector<float> cube_vertices {
-        -0.5f, -0.5f, -0.5f, 0, 0, -1, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 0, 0, -1, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 0, 0, -1, 1.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 0, 0, -1, 1.0f, 1.0f,
-        -0.5f, 0.5f, -0.5f, 0, 0, -1, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0, 0, -1, 0.0f, 0.0f,
+        { { -0.5f, -0.5f, 0.5f }, { 0, 0, 1 }, { 0.0f, 0.0f } },
+        { { 0.5f, -0.5f, 0.5f }, { 0, 0, 1 }, { 1.0f, 0.0f } },
+        { { 0.5f, 0.5f, 0.5f }, { 0, 0, 1 }, { 1.0f, 1.0f } },
+        { { 0.5f, 0.5f, 0.5f }, { 0, 0, 1 }, { 1.0f, 1.0f } },
+        { { -0.5f, 0.5f, 0.5f }, { 0, 0, 1 }, { 0.0f, 1.0f } },
+        { { -0.5f, -0.5f, 0.5f }, { 0, 0, 1 }, { 0.0f, 0.0f } },
 
-        -0.5f, -0.5f, 0.5f, 0, 0, 1, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0, 0, 1, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0, 0, 1, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0, 0, 1, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 0, 0, 1, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0, 0, 1, 0.0f, 0.0f,
+        { { -0.5f, 0.5f, 0.5f }, { -1, 0, 0 }, { 1.0f, 0.0f } },
+        { { -0.5f, 0.5f, -0.5f }, { -1, 0, 0 }, { 1.0f, 1.0f } },
+        { { -0.5f, -0.5f, -0.5f }, { -1, 0, 0 }, { 0.0f, 1.0f } },
+        { { -0.5f, -0.5f, -0.5f }, { -1, 0, 0 }, { 0.0f, 1.0f } },
+        { { -0.5f, -0.5f, 0.5f }, { -1, 0, 0 }, { 0.0f, 0.0f } },
+        { { -0.5f, 0.5f, 0.5f }, { -1, 0, 0 }, { 1.0f, 0.0f } },
 
-        -0.5f, 0.5f, 0.5f, -1, 0, 0, 1.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, -1, 0, 0, 1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, -1, 0, 0, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, -1, 0, 0, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, -1, 0, 0, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, -1, 0, 0, 1.0f, 0.0f,
+        { { 0.5f, 0.5f, 0.5f }, { 1, 0, 0 }, { 1.0f, 0.0f } },
+        { { 0.5f, 0.5f, -0.5f }, { 1, 0, 0 }, { 1.0f, 1.0f } },
+        { { 0.5f, -0.5f, -0.5f }, { 1, 0, 0 }, { 0.0f, 1.0f } },
+        { { 0.5f, -0.5f, -0.5f }, { 1, 0, 0 }, { 0.0f, 1.0f } },
+        { { 0.5f, -0.5f, 0.5f }, { 1, 0, 0 }, { 0.0f, 0.0f } },
+        { { 0.5f, 0.5f, 0.5f }, { 1, 0, 0 }, { 1.0f, 0.0f } },
 
-        0.5f, 0.5f, 0.5f, 1, 0, 0, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1, 0, 0, 1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 1, 0, 0, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 1, 0, 0, 0.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 1, 0, 0, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1, 0, 0, 1.0f, 0.0f,
+        { { -0.5f, -0.5f, -0.5f }, { 0, -1, 0 }, { 0.0f, 1.0f } },
+        { { 0.5f, -0.5f, -0.5f }, { 0, -1, 0 }, { 1.0f, 1.0f } },
+        { { 0.5f, -0.5f, 0.5f }, { 0, -1, 0 }, { 1.0f, 0.0f } },
+        { { 0.5f, -0.5f, 0.5f }, { 0, -1, 0 }, { 1.0f, 0.0f } },
+        { { -0.5f, -0.5f, 0.5f }, { 0, -1, 0 }, { 0.0f, 0.0f } },
+        { { -0.5f, -0.5f, -0.5f }, { 0, -1, 0 }, { 0.0f, 1.0f } },
 
-        -0.5f, -0.5f, -0.5f, 0, -1, 0, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 0, -1, 0, 1.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 0, -1, 0, 1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0, -1, 0, 1.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, 0, -1, 0, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, 0, -1, 0, 0.0f, 1.0f,
-
-        -0.5f, 0.5f, -0.5f, 0, 1, 0, 0.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 0, 1, 0, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0, 1, 0, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0, 1, 0, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 0, 1, 0, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0, 1, 0, 0.0f, 1.0f
+        { { -0.5f, 0.5f, -0.5f }, { 0, 1, 0 }, { 0.0f, 1.0f } },
+        { { 0.5f, 0.5f, -0.5f }, { 0, 1, 0 }, { 1.0f, 1.0f } },
+        { { 0.5f, 0.5f, 0.5f }, { 0, 1, 0 }, { 1.0f, 0.0f } },
+        { { 0.5f, 0.5f, 0.5f }, { 0, 1, 0 }, { 1.0f, 0.0f } },
+        { { -0.5f, 0.5f, 0.5f }, { 0, 1, 0 }, { 0.0f, 0.0f } },
+        { { -0.5f, 0.5f, -0.5f }, { 0, 1, 0 }, { 0.0f, 1.0f } }
     };
 
-    // std::vector<unsigned> indices {
-    //     0, 1, 2, // t1
-    //     2, 3, 0, // t2
-    // };
+    std::vector<unsigned> indices;
+    indices.reserve(36);
+    for (unsigned i = 0; i < indices.capacity(); i++)
+        indices.push_back(i);
 
-    // Buffers init
-    unsigned VAO, VBO, EBO;
-
-    // glGenVertexArrays(1, &VAO);
-    // glBindVertexArray(VAO);
-
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cube_vertices.size(), cube_vertices.data(), GL_STATIC_DRAW);
-
-    // glGenBuffers(1, &EBO);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * indices.size(), indices.data(), GL_STATIC_DRAW);
-
-    /*
-    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), NULL);
-    // glEnableVertexAttribArray(0);
-    // glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    // glEnableVertexAttribArray(1);
-    // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    // glEnableVertexAttribArray(2);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), NULL);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    // Safe: the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    */
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    // Light buffers
-    unsigned light_VAO;
-
-    glGenVertexArrays(1, &light_VAO);
-    glBindVertexArray(light_VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), NULL);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    ngn::Mesh cube_mesh { cube_vertices, indices };
+    LOG("Cube mesh loaded.");
 
     ImGuiControls imgui_controls {
         .direction_light {
@@ -262,22 +214,15 @@ int main(int argc, char** argv)
     };
 
     ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light_all.frag");
-
     ngn::Shader light_source_shader("assets/shaders/light.vert", "assets/shaders/light_source.frag");
+    LOG("Shaders loaded.");
 
-    unsigned diffuse_map = load_texture("assets/images/container2.png");
-    unsigned specular_map = load_texture("assets/images/container2_specular.png");
-    // unsigned emission_map = load_texture("assets/images/matrix.jpg");
-    unsigned emission_map = load_texture("assets/images/black.png");
-    if (
-        !diffuse_map
-        || !specular_map
-        || !emission_map)
-        return -1;
-    lighted_shader.use();
-    lighted_shader.set("material.diffuse", 0);
-    lighted_shader.set("material.specular", 1);
-    lighted_shader.set("material.emission", 2);
+    std::vector<ngn::Texture> container_textures;
+    container_textures.reserve(3);
+    container_textures.emplace_back("assets/images/container2.png", ngn::TextureType::Diffuse);
+    container_textures.emplace_back("assets/images/container2_specular.png", ngn::TextureType::Specular);
+    container_textures.emplace_back("assets/images/black.png", ngn::TextureType::Emission);
+    LOG("Textures loaded.");
 
     glm::mat4 projection;
 
@@ -352,7 +297,6 @@ int main(int argc, char** argv)
         light_source_shader.set("view", view);
         light_source_shader.set("color", point_diffuse_color);
 
-        glBindVertexArray(light_VAO);
         for (size_t i = 0; i < point_light_positions.size(); i++) {
             auto& point_light_position = point_light_positions[i];
 
@@ -361,7 +305,7 @@ int main(int argc, char** argv)
             model = glm::scale(model, glm::vec3 { .2 });
             light_source_shader.use();
             light_source_shader.set("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            draw_mesh(cube_mesh, light_source_shader, {});
 
             lighted_shader.use();
             lighted_shader.set(std::string("pointLights[") + std::to_string(i) + "].diffuse", point_diffuse_color);
@@ -386,20 +330,13 @@ int main(int argc, char** argv)
         lighted_shader.set("spotLight.diffuse", imgui_controls.spot_light.color * imgui_controls.spot_light.diffuse_strength * static_cast<float>(imgui_controls.spot_light.enable));
         lighted_shader.set("spotLight.specular", imgui_controls.spot_light.color * static_cast<float>(imgui_controls.spot_light.enable));
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuse_map);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specular_map);
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, emission_map);
-
         for (size_t i = 0; i < cube_positions.size(); i++) {
             glm::mat4 model(1);
             model = glm::translate(model, cube_positions[i]);
             float angle = 20.0f * i;
             model = glm::rotate(model, current_time * glm::radians(imgui_controls.elements.cubes_rotation_speed * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
             lighted_shader.set("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            draw_mesh(cube_mesh, lighted_shader, container_textures);
         }
 
         glBindVertexArray(0);
@@ -411,13 +348,9 @@ int main(int argc, char** argv)
         glfwPollEvents();
     }
 
-    // Cleanup
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-
     glfwDestroyWindow(window);
     glfwTerminate();
+    LOG("GLFW terminated. Exiting...");
 
     return 0;
 }
@@ -477,44 +410,32 @@ void click_callback(GLFWwindow* window, int input, int action, int mods)
     }
 }
 
-unsigned load_texture(const char* path)
+void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader, const std::vector<ngn::Texture>& textures)
 {
-    // Texture loading
-    stbi_set_flip_vertically_on_load(true);
-    int width, height, nrChannels;
-    unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
-    if (!data) {
-        LOGERR("Failed to load image.");
-        return 0;
+    // unsigned int diffuse_number = 1;
+    // unsigned int specular_number = 1;
+    // unsigned int emission_number = 1;
+    for (int i = 0; i < textures.size(); i++) {
+        glActiveTexture(GL_TEXTURE0 + i);
+        // std::string number;
+        std::string name = ngn::TextureType::to_string(textures[i].type());
+        // if (name == "diffuse")
+        //     number = std::to_string(diffuse_number++);
+        // else if (name == "specular")
+        //     number = std::to_string(specular_number++);
+        // else if (name == "emission")
+        //     number = std::to_string(specular_number++);
+
+        shader.set(("material." + name).c_str(), i);
+        // shader.set(("material." + name + number).c_str(), i);
+        glBindTexture(GL_TEXTURE_2D, textures[i].id());
     }
+    glActiveTexture(GL_TEXTURE0);
 
-    // Generate Texture
-    unsigned texture;
-    glGenTextures(1, &texture);
-
-    // Bind Texture
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-    // Texture repeat
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // For GL_CLAMP_TO_BORDER
-    // float borderColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
-    // glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-
-    // Texture filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    // Load Texture
-    unsigned color_mode = nrChannels == 4 ? GL_RGBA : GL_RGB;
-    glTexImage2D(GL_TEXTURE_2D, 0, color_mode, width, height, 0, color_mode, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    // Free Image data
-    stbi_image_free(data);
-
-    return texture;
+    // draw mesh
+    glBindVertexArray(mesh.VAO());
+    glDrawElements(GL_TRIANGLES, mesh.indices().size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
 }
 
 void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls)

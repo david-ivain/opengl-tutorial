@@ -22,7 +22,7 @@ Camera::Camera(const CameraOptions& options)
     , fov_constraints_(options.fov_constraints)
 {
     update_vectors();
-    LOGF("front %f %f %f", front_.x, front_.y, front_.z);
+    LOG("Camera created.");
 }
 
 void Camera::rotate(float yaw, float pitch)
