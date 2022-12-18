@@ -12,9 +12,9 @@ class Mesh {
 public:
     Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned>& indices, const std::vector<TextureOptions>& texture_options);
     ~Mesh();
+    Mesh(Mesh&&);
 
     Mesh(const Mesh&) = delete;
-    Mesh(Mesh&&) = delete;
 
     unsigned VAO() const;
     const std::vector<Vertex>& vertices() const;

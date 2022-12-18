@@ -53,6 +53,23 @@ Mesh::~Mesh()
     glDeleteBuffers(1, &EBO_);
 }
 
+Mesh::Mesh(Mesh&& other)
+    : VAO_(other.VAO_)
+    , VBO_(other.VBO_)
+    , EBO_(other.EBO_)
+    , vertices_(other.vertices_)
+    , indices_(other.indices_)
+{
+    other.VAO_ = 0;
+    other.VBO_ = 0;
+    other.EBO_ = 0;
+    textures_.reserve(other.textures_.size());
+    for (auto& texture : other.textures_) {
+        textures_.emplace_back(std::move(texture));
+    }
+    other.textures_.clear();
+}
+
 unsigned Mesh::VAO() const
 {
     return VAO_;

@@ -29,6 +29,8 @@ src/ngn/rendering/texture.h
 src/ngn/rendering/texture.cpp
 src/ngn/rendering/mesh.h
 src/ngn/rendering/mesh.cpp
+src/ngn/rendering/model.h
+src/ngn/rendering/model.cpp
 )
 
 target_include_directories(app PRIVATE ${STB_INCLUDE_DIRS})

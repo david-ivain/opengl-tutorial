@@ -28,6 +28,7 @@ std::string TextureType::to_string(TextureType::Value type)
 
 Texture::Texture(const std::string& path, TextureType::Value type)
     : type_(type)
+    , path_(path)
 {
     // Texture loading
     stbi_set_flip_vertically_on_load(true);
@@ -89,6 +90,11 @@ unsigned Texture::id() const
 TextureType::Value Texture::type() const
 {
     return type_;
+}
+
+const std::string& Texture::path() const
+{
+    return path_;
 }
 
 }
