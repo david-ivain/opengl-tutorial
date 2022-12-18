@@ -246,7 +246,9 @@ int main(int argc, char** argv)
             .cubes_rotation_speed = 10 }
     };
 
-    ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light.frag");
+    // ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light.frag");
+    // ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/point_light.frag");
+    ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/spot_light.frag");
 
     ngn::Shader light_source_shader("assets/shaders/light.vert", "assets/shaders/light_source.frag");
 
@@ -295,7 +297,8 @@ int main(int argc, char** argv)
         process_input(window);
 
         // Draw
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        // glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0, 0, 0, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         float current_time = glfwGetTime();
@@ -332,10 +335,18 @@ int main(int argc, char** argv)
         lighted_shader.set("view", view);
         lighted_shader.set("viewPos", camera.position());
         lighted_shader.set("material.shininess", imgui_controls.material.shininess);
-        lighted_shader.set("light.position", light_source_position);
+        // lighted_shader.set("light.direction", glm::vec3 { -.2, -1, -.3 });
+        // lighted_shader.set("light.position", light_source_position);
+        lighted_shader.set("light.direction", camera.front());
+        lighted_shader.set("light.position", camera.position());
+        lighted_shader.set("light.cutOff", glm::cos(glm::radians(12.5f)));
+        lighted_shader.set("light.outerCutOff", glm::cos(glm::radians(17.5f)));
         lighted_shader.set("light.ambient", ambient_color);
         lighted_shader.set("light.diffuse", diffuse_color);
         lighted_shader.set("light.specular", imgui_controls.light.color);
+        lighted_shader.set("light.constant", 1.f);
+        lighted_shader.set("light.linear", .09f);
+        lighted_shader.set("light.quadratic", .032f);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, diffuse_map);
