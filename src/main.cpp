@@ -9,6 +9,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <map>
 
 constexpr auto WINDOW_WIDTH = 800;
 constexpr auto WINDOW_HEIGHT = 600;
@@ -119,6 +120,10 @@ int main(int argc, char** argv)
 
     // Stencil test
     // glEnable(GL_STENCIL_TEST);
+
+    // Blend
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // imgui
     IMGUI_CHECKVERSION();
@@ -340,20 +345,30 @@ int main(int argc, char** argv)
         lighted_shader.set("model", backpack_model_matrix);
         draw_model(backpack_model, lighted_shader);
 
-        // white_shader.use();
-        // white_shader.set("projection", projection);
-        // white_shader.set("view", view);
+        // std::map<float, glm::vec3> sorted;
+        // for (unsigned int i = 0; i < cube_positions.size(); i++) {
+        //     float distance = glm::length(camera.position() - cube_positions[i]);
+        //     sorted[distance] = cube_positions[i];
+        // }
 
         // glStencilFunc(GL_ALWAYS, 1, 0xFF); // all fragments should pass the stencil test
         // glStencilMask(0xFF);
         for (size_t i = 0; i < cube_positions.size(); i++) {
+            // int i = 0;
+            // for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it) {
             glm::mat4 model(1);
             model = glm::translate(model, cube_positions[i]);
+            // model = glm::translate(model, it->second);
             float angle = 20.0f * i;
             model = glm::rotate(model, current_time * glm::radians(imgui_controls.elements.cubes_rotation_speed * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
             lighted_shader.set("model", model);
             draw_mesh(container_mesh, lighted_shader);
+            // i++;
         }
+
+        // white_shader.use();
+        // white_shader.set("projection", projection);
+        // white_shader.set("view", view);
 
         // glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
         // glStencilMask(0x00); // disable writing to the stencil buffer
