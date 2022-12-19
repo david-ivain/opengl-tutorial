@@ -10,33 +10,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <map>
-
-constexpr auto WINDOW_WIDTH = 800;
-constexpr auto WINDOW_HEIGHT = 600;
-constexpr auto WINDOW_TITLE = "App";
-constexpr float MOVEMENT_SPEED = 4;
-constexpr float MOUSE_SENSITIVITY = .1;
-
-constexpr float AMBIENT_STRENGTH = .1;
-
-glm::vec3 player_position(0, 0, -5);
-ngn::Camera camera({ .position = player_position });
-
-glm::vec3 light_source_position(1.2f, 1.0f, 2.0f);
-
-float delta_time = 0;
-float last_frame = 0;
-
-float last_x = WINDOW_WIDTH / 2.;
-float last_y = WINDOW_HEIGHT / 2.;
-
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void process_input(GLFWwindow* window);
-void mouse_callback(GLFWwindow* window, double position_x, double position_y);
-void scroll_callback(GLFWwindow* window, double offset_x, double offset_y);
-void click_callback(GLFWwindow* window, int input, int action, int mods);
-void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader);
-void draw_model(const ngn::Model& model, const ngn::Shader& shader);
+#include <vector>
 
 struct ImGuiControls {
     struct {
@@ -61,137 +35,117 @@ struct ImGuiControls {
     } elements;
 };
 
-void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls);
+constexpr auto WINDOW_WIDTH = 800;
+constexpr auto WINDOW_HEIGHT = 600;
+constexpr auto WINDOW_TITLE = "App";
+constexpr float MOVEMENT_SPEED = 4;
+constexpr float MOUSE_SENSITIVITY = .1;
 
-int main(int argc, char** argv)
+constexpr float AMBIENT_STRENGTH = .1;
+
+const std::vector<ngn::Vertex> cube_vertices {
+    { { -0.5f, -0.5f, -0.5f }, { 0, 0, -1 }, { 0.0f, 0.0f } },
+    { { 0.5f, 0.5f, -0.5f }, { 0, 0, -1 }, { 1.0f, 1.0f } },
+    { { 0.5f, -0.5f, -0.5f }, { 0, 0, -1 }, { 1.0f, 0.0f } },
+    { { 0.5f, 0.5f, -0.5f }, { 0, 0, -1 }, { 1.0f, 1.0f } },
+    { { -0.5f, -0.5f, -0.5f }, { 0, 0, -1 }, { 0.0f, 0.0f } },
+    { { -0.5f, 0.5f, -0.5f }, { 0, 0, -1 }, { 0.0f, 1.0f } },
+
+    { { -0.5f, -0.5f, 0.5f }, { 0, 0, 1 }, { 0.0f, 0.0f } },
+    { { 0.5f, -0.5f, 0.5f }, { 0, 0, 1 }, { 1.0f, 0.0f } },
+    { { 0.5f, 0.5f, 0.5f }, { 0, 0, 1 }, { 1.0f, 1.0f } },
+    { { 0.5f, 0.5f, 0.5f }, { 0, 0, 1 }, { 1.0f, 1.0f } },
+    { { -0.5f, 0.5f, 0.5f }, { 0, 0, 1 }, { 0.0f, 1.0f } },
+    { { -0.5f, -0.5f, 0.5f }, { 0, 0, 1 }, { 0.0f, 0.0f } },
+
+    { { -0.5f, 0.5f, 0.5f }, { -1, 0, 0 }, { 1.0f, 0.0f } },
+    { { -0.5f, 0.5f, -0.5f }, { -1, 0, 0 }, { 1.0f, 1.0f } },
+    { { -0.5f, -0.5f, -0.5f }, { -1, 0, 0 }, { 0.0f, 1.0f } },
+    { { -0.5f, -0.5f, -0.5f }, { -1, 0, 0 }, { 0.0f, 1.0f } },
+    { { -0.5f, -0.5f, 0.5f }, { -1, 0, 0 }, { 0.0f, 0.0f } },
+    { { -0.5f, 0.5f, 0.5f }, { -1, 0, 0 }, { 1.0f, 0.0f } },
+
+    { { 0.5f, 0.5f, 0.5f }, { 1, 0, 0 }, { 1.0f, 0.0f } },
+    { { 0.5f, -0.5f, -0.5f }, { 1, 0, 0 }, { 0.0f, 1.0f } },
+    { { 0.5f, 0.5f, -0.5f }, { 1, 0, 0 }, { 1.0f, 1.0f } },
+    { { 0.5f, -0.5f, -0.5f }, { 1, 0, 0 }, { 0.0f, 1.0f } },
+    { { 0.5f, 0.5f, 0.5f }, { 1, 0, 0 }, { 1.0f, 0.0f } },
+    { { 0.5f, -0.5f, 0.5f }, { 1, 0, 0 }, { 0.0f, 0.0f } },
+
+    { { -0.5f, -0.5f, -0.5f }, { 0, -1, 0 }, { 0.0f, 1.0f } },
+    { { 0.5f, -0.5f, -0.5f }, { 0, -1, 0 }, { 1.0f, 1.0f } },
+    { { 0.5f, -0.5f, 0.5f }, { 0, -1, 0 }, { 1.0f, 0.0f } },
+    { { 0.5f, -0.5f, 0.5f }, { 0, -1, 0 }, { 1.0f, 0.0f } },
+    { { -0.5f, -0.5f, 0.5f }, { 0, -1, 0 }, { 0.0f, 0.0f } },
+    { { -0.5f, -0.5f, -0.5f }, { 0, -1, 0 }, { 0.0f, 1.0f } },
+
+    { { -0.5f, 0.5f, -0.5f }, { 0, 1, 0 }, { 0.0f, 1.0f } },
+    { { 0.5f, 0.5f, 0.5f }, { 0, 1, 0 }, { 1.0f, 0.0f } },
+    { { 0.5f, 0.5f, -0.5f }, { 0, 1, 0 }, { 1.0f, 1.0f } },
+    { { 0.5f, 0.5f, 0.5f }, { 0, 1, 0 }, { 1.0f, 0.0f } },
+    { { -0.5f, 0.5f, -0.5f }, { 0, 1, 0 }, { 0.0f, 1.0f } },
+    { { -0.5f, 0.5f, 0.5f }, { 0, 1, 0 }, { 0.0f, 0.0f } },
+};
+
+std::vector<unsigned> get_indices_vector(unsigned size)
 {
-    // Init
-    if (!glfwInit()) {
-        LOGERR("Failed to initialize GLFW.");
-        return -1;
-    }
-    LOG("GLFW initialized.");
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-    LOG("OpenGl hints set.");
-
-    // Create window
-    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, NULL, NULL);
-    if (window == NULL) {
-        LOGERR("Failed to create GLFW window");
-        glfwTerminate();
-        return -1;
-    }
-    LOG("GLFW window created.");
-
-    glfwMakeContextCurrent(window);
-
-    // Load glad
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        LOGERR("Failed to initialize GLAD");
-        return -1;
-    }
-    LOG("GLAD loaded.");
-
-    // Info
-    int numberOfAttributes;
-    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &numberOfAttributes);
-    LOGF("Maximum number of vertex attributes supported: %d", numberOfAttributes);
-
-    // Viewport
-    glViewport(0, 0, 800, 600);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    LOG("Framebuffer size callback set.");
-
-    // Mouse
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glfwSetMouseButtonCallback(window, click_callback);
-    LOG("Mouse callbacks set.");
-
-    // Enable z sorting
-    glEnable(GL_DEPTH_TEST);
-    LOG("Depth test enabled.");
-
-    // Stencil test
-    // glEnable(GL_STENCIL_TEST);
-
-    // Blend
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    // Face culling
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-
-    // imgui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    (void)io;
-
-    // Setup Dear ImGui style
-    LOG("Imgui initialized.");
-
-    // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 330 core");
-    ImGui::StyleColorsDark();
-
-    std::vector<ngn::Vertex> cube_vertices {
-        { { -0.5f, -0.5f, -0.5f }, { 0, 0, -1 }, { 0.0f, 0.0f } },
-        { { 0.5f, 0.5f, -0.5f }, { 0, 0, -1 }, { 1.0f, 1.0f } },
-        { { 0.5f, -0.5f, -0.5f }, { 0, 0, -1 }, { 1.0f, 0.0f } },
-        { { 0.5f, 0.5f, -0.5f }, { 0, 0, -1 }, { 1.0f, 1.0f } },
-        { { -0.5f, -0.5f, -0.5f }, { 0, 0, -1 }, { 0.0f, 0.0f } },
-        { { -0.5f, 0.5f, -0.5f }, { 0, 0, -1 }, { 0.0f, 1.0f } },
-
-        { { -0.5f, -0.5f, 0.5f }, { 0, 0, 1 }, { 0.0f, 0.0f } },
-        { { 0.5f, -0.5f, 0.5f }, { 0, 0, 1 }, { 1.0f, 0.0f } },
-        { { 0.5f, 0.5f, 0.5f }, { 0, 0, 1 }, { 1.0f, 1.0f } },
-        { { 0.5f, 0.5f, 0.5f }, { 0, 0, 1 }, { 1.0f, 1.0f } },
-        { { -0.5f, 0.5f, 0.5f }, { 0, 0, 1 }, { 0.0f, 1.0f } },
-        { { -0.5f, -0.5f, 0.5f }, { 0, 0, 1 }, { 0.0f, 0.0f } },
-
-        { { -0.5f, 0.5f, 0.5f }, { -1, 0, 0 }, { 1.0f, 0.0f } },
-        { { -0.5f, 0.5f, -0.5f }, { -1, 0, 0 }, { 1.0f, 1.0f } },
-        { { -0.5f, -0.5f, -0.5f }, { -1, 0, 0 }, { 0.0f, 1.0f } },
-        { { -0.5f, -0.5f, -0.5f }, { -1, 0, 0 }, { 0.0f, 1.0f } },
-        { { -0.5f, -0.5f, 0.5f }, { -1, 0, 0 }, { 0.0f, 0.0f } },
-        { { -0.5f, 0.5f, 0.5f }, { -1, 0, 0 }, { 1.0f, 0.0f } },
-
-        { { 0.5f, 0.5f, 0.5f }, { 1, 0, 0 }, { 1.0f, 0.0f } },
-        { { 0.5f, -0.5f, -0.5f }, { 1, 0, 0 }, { 0.0f, 1.0f } },
-        { { 0.5f, 0.5f, -0.5f }, { 1, 0, 0 }, { 1.0f, 1.0f } },
-        { { 0.5f, -0.5f, -0.5f }, { 1, 0, 0 }, { 0.0f, 1.0f } },
-        { { 0.5f, 0.5f, 0.5f }, { 1, 0, 0 }, { 1.0f, 0.0f } },
-        { { 0.5f, -0.5f, 0.5f }, { 1, 0, 0 }, { 0.0f, 0.0f } },
-
-        { { -0.5f, -0.5f, -0.5f }, { 0, -1, 0 }, { 0.0f, 1.0f } },
-        { { 0.5f, -0.5f, -0.5f }, { 0, -1, 0 }, { 1.0f, 1.0f } },
-        { { 0.5f, -0.5f, 0.5f }, { 0, -1, 0 }, { 1.0f, 0.0f } },
-        { { 0.5f, -0.5f, 0.5f }, { 0, -1, 0 }, { 1.0f, 0.0f } },
-        { { -0.5f, -0.5f, 0.5f }, { 0, -1, 0 }, { 0.0f, 0.0f } },
-        { { -0.5f, -0.5f, -0.5f }, { 0, -1, 0 }, { 0.0f, 1.0f } },
-
-        { { -0.5f, 0.5f, -0.5f }, { 0, 1, 0 }, { 0.0f, 1.0f } },
-        { { 0.5f, 0.5f, 0.5f }, { 0, 1, 0 }, { 1.0f, 0.0f } },
-        { { 0.5f, 0.5f, -0.5f }, { 0, 1, 0 }, { 1.0f, 1.0f } },
-        { { 0.5f, 0.5f, 0.5f }, { 0, 1, 0 }, { 1.0f, 0.0f } },
-        { { -0.5f, 0.5f, -0.5f }, { 0, 1, 0 }, { 0.0f, 1.0f } },
-        { { -0.5f, 0.5f, 0.5f }, { 0, 1, 0 }, { 0.0f, 0.0f } },
-    };
-
     std::vector<unsigned> indices;
     indices.reserve(36);
     for (unsigned i = 0; i < indices.capacity(); i++)
         indices.push_back(i);
+    return indices;
+}
+const std::vector<unsigned> indices { get_indices_vector(cube_vertices.size()) };
+
+const std::vector<glm::vec3> cube_positions {
+    glm::vec3(0.0f, 0.0f, 0.0f),
+    glm::vec3(2.0f, 5.0f, -15.0f),
+    glm::vec3(-1.5f, -2.2f, -2.5f),
+    glm::vec3(-3.8f, -2.0f, -12.3f),
+    glm::vec3(2.4f, -0.4f, -3.5f),
+    glm::vec3(-1.7f, 3.0f, -7.5f),
+    glm::vec3(1.3f, -2.0f, -2.5f),
+    glm::vec3(1.5f, 2.0f, -2.5f),
+    glm::vec3(1.5f, 0.2f, -1.5f),
+    glm::vec3(-1.3f, 1.0f, -1.5f),
+};
+
+const std::vector<glm::vec3> point_light_positions = {
+    glm::vec3(.7, .2, 2),
+    glm::vec3(2.3, -3.3, -4),
+    glm::vec3(-4, 2, -12),
+    glm::vec3(0, 0, -3),
+};
+
+glm::vec3 player_position(0, 0, -5);
+ngn::Camera camera({ .position = player_position });
+
+glm::vec3 light_source_position(1.2f, 1.0f, 2.0f);
+
+float delta_time = 0;
+float last_frame = 0;
+
+float last_x = WINDOW_WIDTH / 2.;
+float last_y = WINDOW_HEIGHT / 2.;
+
+GLFWwindow* init_glfw();
+void init_imgui(GLFWwindow* window);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void process_input(GLFWwindow* window);
+void mouse_callback(GLFWwindow* window, double position_x, double position_y);
+void scroll_callback(GLFWwindow* window, double offset_x, double offset_y);
+void click_callback(GLFWwindow* window, int input, int action, int mods);
+void draw_mesh(const ngn::Mesh& mesh, const ngn::Shader& shader);
+void draw_model(const ngn::Model& model, const ngn::Shader& shader);
+
+void draw_the_cubes(const ngn::Shader& shader, const ngn::Mesh& mesh, float current_time, const ImGuiControls& imgui_controls);
+void draw_the_transparent_cubes(const ngn::Shader& shader, const ngn::Mesh& mesh, float current_time, const ImGuiControls& imgui_controls);
+void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls);
+
+int main(int argc, char** argv)
+{
+    GLFWwindow* window = init_glfw();
+    init_imgui(window);
 
     ngn::Mesh light_mesh {
         cube_vertices,
@@ -204,6 +158,15 @@ int main(int argc, char** argv)
         {
             ngn::TexturePool::load("assets/images/container2.png", ngn::TextureType::Diffuse),
             ngn::TexturePool::load("assets/images/container2_specular.png", ngn::TextureType::Specular),
+            ngn::TexturePool::load("assets/images/black.png", ngn::TextureType::Emission),
+        },
+    };
+    ngn::Mesh glass_cube {
+        cube_vertices,
+        indices,
+        {
+            ngn::TexturePool::load("assets/images/blending_transparent_window.png", ngn::TextureType::Diffuse),
+            ngn::TexturePool::load("assets/images/black.png", ngn::TextureType::Specular),
             ngn::TexturePool::load("assets/images/black.png", ngn::TextureType::Emission),
         },
     };
@@ -231,30 +194,10 @@ int main(int argc, char** argv)
 
     ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light_all.frag");
     ngn::Shader light_source_shader("assets/shaders/light.vert", "assets/shaders/light_source.frag");
-    // ngn::Shader white_shader("assets/shaders/light.vert", "assets/shaders/white.frag");
+    ngn::Shader white_shader("assets/shaders/light.vert", "assets/shaders/white.frag");
     LOG("Shaders loaded.");
 
     glm::mat4 projection;
-
-    std::vector<glm::vec3> cube_positions {
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(2.0f, 5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3(2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f, 3.0f, -7.5f),
-        glm::vec3(1.3f, -2.0f, -2.5f),
-        glm::vec3(1.5f, 2.0f, -2.5f),
-        glm::vec3(1.5f, 0.2f, -1.5f),
-        glm::vec3(-1.3f, 1.0f, -1.5f),
-    };
-
-    std::vector<glm::vec3> point_light_positions = {
-        glm::vec3(.7, .2, 2),
-        glm::vec3(2.3, -3.3, -4),
-        glm::vec3(-4, 2, -12),
-        glm::vec3(0, 0, -3),
-    };
 
     lighted_shader.use();
     for (size_t i = 0; i < point_light_positions.size(); i++) {
@@ -280,15 +223,21 @@ int main(int argc, char** argv)
     while (!glfwWindowShouldClose(window)) {
         process_input(window);
 
-        // glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+#ifdef OUTLINE
+        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+#endif
 
         // Draw
-        // glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClearColor(0, 0, 0, 1.0f);
-        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+#ifdef OUTLINE
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+#else
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#endif
 
-        // glStencilMask(0x00);
+#ifdef OUTLINE
+        glStencilMask(0x00);
+#endif
 
         float current_time = glfwGetTime();
         delta_time = current_time - last_frame;
@@ -345,52 +294,42 @@ int main(int argc, char** argv)
         lighted_shader.set("spotLight.diffuse", imgui_controls.spot_light.color * imgui_controls.spot_light.diffuse_strength * static_cast<float>(imgui_controls.spot_light.enable));
         lighted_shader.set("spotLight.specular", imgui_controls.spot_light.color * static_cast<float>(imgui_controls.spot_light.enable));
 
-        glm::mat4 backpack_model_matrix { 1 };
-        backpack_model_matrix = glm::translate(backpack_model_matrix, { 5, 0, 0 });
-        lighted_shader.set("model", backpack_model_matrix);
-        draw_model(backpack_model, lighted_shader);
+#ifdef OUTLINE
+        glStencilFunc(GL_ALWAYS, 1, 0xFF); // all fragments should pass the stencil test
+        glStencilMask(0xFF);
+#endif
 
-        // std::map<float, glm::vec3> sorted;
-        // for (unsigned int i = 0; i < cube_positions.size(); i++) {
-        //     float distance = glm::length(camera.position() - cube_positions[i]);
-        //     sorted[distance] = cube_positions[i];
-        // }
+        draw_the_cubes(lighted_shader, container_mesh, current_time, imgui_controls);
+        // draw_the_transparent_cubes(lighted_shader, glass_cube, current_time, imgui_controls);
 
-        // glStencilFunc(GL_ALWAYS, 1, 0xFF); // all fragments should pass the stencil test
-        // glStencilMask(0xFF);
+#ifdef OUTLINE
+        white_shader.use();
+        white_shader.set("projection", projection);
+        white_shader.set("view", view);
+
+        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+        glStencilMask(0x00); // disable writing to the stencil buffer
+        glDisable(GL_DEPTH_TEST);
+        white_shader.use();
         for (size_t i = 0; i < cube_positions.size(); i++) {
-            // int i = 0;
-            // for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it) {
             glm::mat4 model(1);
             model = glm::translate(model, cube_positions[i]);
-            // model = glm::translate(model, it->second);
             float angle = 20.0f * i;
             model = glm::rotate(model, current_time * glm::radians(imgui_controls.elements.cubes_rotation_speed * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
-            lighted_shader.set("model", model);
-            draw_mesh(container_mesh, lighted_shader);
-            // i++;
+            model = glm::scale(model, glm::vec3 { 1.1 });
+            white_shader.set("model", model);
+            draw_mesh(container_mesh, white_shader);
         }
+        glStencilMask(0xFF);
+        glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        glEnable(GL_DEPTH_TEST);
+#endif
 
-        // white_shader.use();
-        // white_shader.set("projection", projection);
-        // white_shader.set("view", view);
-
-        // glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-        // glStencilMask(0x00); // disable writing to the stencil buffer
-        // glDisable(GL_DEPTH_TEST);
-        // white_shader.use();
-        // for (size_t i = 0; i < cube_positions.size(); i++) {
-        //     glm::mat4 model(1);
-        //     model = glm::translate(model, cube_positions[i]);
-        //     float angle = 20.0f * i;
-        //     model = glm::rotate(model, current_time * glm::radians(imgui_controls.elements.cubes_rotation_speed * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
-        //     model = glm::scale(model, glm::vec3 { 1.1 });
-        //     white_shader.set("model", model);
-        //     draw_mesh(container_mesh, white_shader);
-        // }
-        // glStencilMask(0xFF);
-        // glStencilFunc(GL_ALWAYS, 1, 0xFF);
-        // glEnable(GL_DEPTH_TEST);
+        glm::mat4 backpack_model_matrix { 1 };
+        backpack_model_matrix = glm::translate(backpack_model_matrix, { 5, 0, 0 });
+        lighted_shader.use();
+        lighted_shader.set("model", backpack_model_matrix);
+        draw_model(backpack_model, lighted_shader);
 
         glBindVertexArray(0);
 
@@ -406,6 +345,94 @@ int main(int argc, char** argv)
     LOG("GLFW terminated. Exiting...");
 
     return 0;
+}
+
+GLFWwindow* init_glfw()
+{
+    // Init
+    if (!glfwInit()) {
+        LOGERR("Failed to initialize GLFW.");
+        exit(-1);
+    }
+    LOG("GLFW initialized.");
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+    LOG("OpenGl hints set.");
+
+    // Create window
+    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, NULL, NULL);
+    if (window == NULL) {
+        LOGERR("Failed to create GLFW window");
+        glfwTerminate();
+        exit(-1);
+    }
+    LOG("GLFW window created.");
+
+    glfwMakeContextCurrent(window);
+
+    // Load glad
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        LOGERR("Failed to initialize GLAD");
+        exit(-1);
+    }
+    LOG("GLAD loaded.");
+
+    // Info
+    int numberOfAttributes;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &numberOfAttributes);
+    LOGF("Maximum number of vertex attributes supported: %d", numberOfAttributes);
+
+    // Viewport
+    glViewport(0, 0, 800, 600);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    LOG("Framebuffer size callback set.");
+
+    // Mouse
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetMouseButtonCallback(window, click_callback);
+    LOG("Mouse callbacks set.");
+
+    // Enable z sorting
+    glEnable(GL_DEPTH_TEST);
+    LOG("Depth test enabled.");
+
+    // Stencil test
+#ifdef OUTLINE
+    glEnable(GL_STENCIL_TEST);
+#endif
+
+    // Blend
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Face culling
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    return window;
+}
+
+void init_imgui(GLFWwindow* window)
+{
+    // imgui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io;
+
+    // Setup Dear ImGui style
+    LOG("Imgui initialized.");
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330 core");
+    ImGui::StyleColorsDark();
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -550,4 +577,36 @@ void display_imgui_controls(bool& is_open, ImGuiControls& imgui_controls)
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void draw_the_cubes(const ngn::Shader& shader, const ngn::Mesh& mesh, float current_time, const ImGuiControls& imgui_controls)
+{
+    for (size_t i = 0; i < cube_positions.size(); i++) {
+        glm::mat4 model(1);
+        model = glm::translate(model, cube_positions[i]);
+        float angle = 20.0f * i;
+        model = glm::rotate(model, current_time * glm::radians(imgui_controls.elements.cubes_rotation_speed * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
+        shader.set("model", model);
+        draw_mesh(mesh, shader);
+    }
+}
+
+void draw_the_transparent_cubes(const ngn::Shader& shader, const ngn::Mesh& mesh, float current_time, const ImGuiControls& imgui_controls)
+{
+    std::map<float, glm::vec3> sorted;
+    for (unsigned int i = 0; i < cube_positions.size(); i++) {
+        float distance = glm::length(camera.position() - cube_positions[i]);
+        sorted[distance] = cube_positions[i];
+    }
+
+    int i = 0;
+    for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it) {
+        glm::mat4 model(1);
+        model = glm::translate(model, it->second);
+        float angle = 20.0f * i;
+        model = glm::rotate(model, current_time * glm::radians(imgui_controls.elements.cubes_rotation_speed * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
+        shader.set("model", model);
+        draw_mesh(mesh, shader);
+        i++;
+    }
 }
