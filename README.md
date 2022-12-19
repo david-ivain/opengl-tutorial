@@ -21,3 +21,5 @@ Following the tutorial at [learnopengl.com](https://learnopengl.com/).
 ![Model loading](./readme_files/model_loading.png)
 
 ![Stencil testing](./readme_files/stencil_testing.png)
+
+![Blend](./readme_files/blend.png)
