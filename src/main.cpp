@@ -117,6 +117,9 @@ int main(int argc, char** argv)
     glEnable(GL_DEPTH_TEST);
     LOG("Depth test enabled.");
 
+    // Stencil test
+    // glEnable(GL_STENCIL_TEST);
+
     // imgui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -218,6 +221,7 @@ int main(int argc, char** argv)
 
     ngn::Shader lighted_shader("assets/shaders/light.vert", "assets/shaders/light_all.frag");
     ngn::Shader light_source_shader("assets/shaders/light.vert", "assets/shaders/light_source.frag");
+    // ngn::Shader white_shader("assets/shaders/light.vert", "assets/shaders/white.frag");
     LOG("Shaders loaded.");
 
     glm::mat4 projection;
@@ -266,10 +270,15 @@ int main(int argc, char** argv)
     while (!glfwWindowShouldClose(window)) {
         process_input(window);
 
+        // glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+
         // Draw
         // glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClearColor(0, 0, 0, 1.0f);
+        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // glStencilMask(0x00);
 
         float current_time = glfwGetTime();
         delta_time = current_time - last_frame;
@@ -331,6 +340,12 @@ int main(int argc, char** argv)
         lighted_shader.set("model", backpack_model_matrix);
         draw_model(backpack_model, lighted_shader);
 
+        // white_shader.use();
+        // white_shader.set("projection", projection);
+        // white_shader.set("view", view);
+
+        // glStencilFunc(GL_ALWAYS, 1, 0xFF); // all fragments should pass the stencil test
+        // glStencilMask(0xFF);
         for (size_t i = 0; i < cube_positions.size(); i++) {
             glm::mat4 model(1);
             model = glm::translate(model, cube_positions[i]);
@@ -339,6 +354,23 @@ int main(int argc, char** argv)
             lighted_shader.set("model", model);
             draw_mesh(container_mesh, lighted_shader);
         }
+
+        // glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+        // glStencilMask(0x00); // disable writing to the stencil buffer
+        // glDisable(GL_DEPTH_TEST);
+        // white_shader.use();
+        // for (size_t i = 0; i < cube_positions.size(); i++) {
+        //     glm::mat4 model(1);
+        //     model = glm::translate(model, cube_positions[i]);
+        //     float angle = 20.0f * i;
+        //     model = glm::rotate(model, current_time * glm::radians(imgui_controls.elements.cubes_rotation_speed * (i + 1)) + glm::radians(angle), { 1.f, .3f, .5f });
+        //     model = glm::scale(model, glm::vec3 { 1.1 });
+        //     white_shader.set("model", model);
+        //     draw_mesh(container_mesh, white_shader);
+        // }
+        // glStencilMask(0xFF);
+        // glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        // glEnable(GL_DEPTH_TEST);
 
         glBindVertexArray(0);
 
