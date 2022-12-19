@@ -17,3 +17,7 @@ Following the tutorial at [learnopengl.com](https://learnopengl.com/).
 ![Multiple lights](./readme_files/multiple_lights.png)
 
 ![Multiple colored lights](./readme_files/multiple_colored_lights.png)
+
+![Model loading](./readme_files/model_loading.png)
+
+![Stencil testing](./readme_files/stencil_testing.png)
