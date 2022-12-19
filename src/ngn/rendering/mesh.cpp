@@ -40,12 +40,12 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned>& ind
         textures_.push_back(texture);
     }
 
-    LOGF("Mesh { .VAO:%u, .VBO:%u, .EBO:%u } created.", VAO_, VBO_, EBO_);
+    // LOGF("Mesh { .VAO:%u, .VBO:%u, .EBO:%u } created.", VAO_, VBO_, EBO_);
 }
 
 Mesh::~Mesh()
 {
-    LOGF("Mesh { .VAO:%u, .VBO:%u, .EBO:%u } deleted.", VAO_, VBO_, EBO_);
+    // LOGF("Mesh { .VAO:%u, .VBO:%u, .EBO:%u } deleted.", VAO_, VBO_, EBO_);
     glDeleteVertexArrays(1, &VAO_);
     glDeleteBuffers(1, &VBO_);
     glDeleteBuffers(1, &EBO_);
